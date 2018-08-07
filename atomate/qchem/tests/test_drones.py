@@ -217,5 +217,29 @@ class QChemDroneTest(unittest.TestCase):
         self.assertIn("dir_name", doc)
         self.assertEqual(len(doc["calcs_reversed"]), 1)
 
+    def test_assimilate_opt_freq_sp(self):
+        drone = QChemDrone(runs=["opt", "freq", "sp"])
+        doc = drone.assimilate(
+            path=os.path.join(module_dir, "..", "test_files", "opt_freq_sp_job"),
+            input_file="test.qin",
+            output_file="test.qout",
+            multirun=False)
+        self.assertEqual(doc["input"]["job_type"], "opt")
+        self.assertEqual(doc["output"]["job_type"], "sp")
+        self.assertEqual(doc["output"]["final_energy"], -589.4616946463)
+        self.assertEqual(doc["walltime"], 2827.88)
+        self.assertEqual(doc["cputime"], 110136.97)
+        self.assertEqual(doc["smiles"], "[C@H]12[C@H]([C@H]3O[C@@H]1C=C3)C(=O)NC2=O")
+        self.assertEqual(doc["formula_pretty"], "H7C8NO3")
+        self.assertEqual(doc["formula_anonymous"], "AB3C7D8")
+        self.assertEqual(doc["chemsys"], "C-H-N-O")
+        self.assertEqual(doc["pointgroup"], "Cs")
+        self.assertIn("calcs_reversed", doc)
+        self.assertIn("initial_molecule", doc["input"])
+        self.assertIn("initial_molecule", doc["output"])
+        self.assertIn("last_updated", doc)
+        self.assertIn("dir_name", doc)
+        self.assertEqual(len(doc["calcs_reversed"]), 3)
+
 if __name__ == "__main__":
     unittest.main()

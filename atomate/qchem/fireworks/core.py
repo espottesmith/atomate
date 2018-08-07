@@ -6,13 +6,13 @@ from __future__ import absolute_import, division, print_function, \
 
 # Defines standardized Fireworks that can be chained easily to perform various
 # sequences of QChem calculations.
-
+import os
 
 from fireworks import Firework
 
 from atomate.qchem.firetasks.parse_outputs import QChemToDb
 from atomate.qchem.firetasks.run_calc import RunQChemCustodian
-from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet
+from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet, WriteCustomInput
 from atomate.qchem.firetasks.fragmenter import FragmentMolecule
 
 __author__ = "Samuel Blau"
@@ -217,6 +217,97 @@ class FrequencyFlatteningOptimizeFW(Firework):
                     "special_run_type": "frequency_flattener"
                 }))
         super(FrequencyFlatteningOptimizeFW, self).__init__(
+            t,
+            parents=parents,
+            name=name,
+            **kwargs)
+
+
+class OptFreqSPFW(Firework):
+    def __init__(self, molecule=None,
+                 name="opt_freq_sp",
+                 qchem_cmd="qchem",
+                 multimode="openmp",
+                 input_file="mol.qin",
+                 output_file="mol.qout",
+                 qclog_file="mol.qclog",
+                 max_cores=64,
+                 qchem_input_params=None,
+                 sp_params=None,
+                 reversed_direction=False,
+                 db_file=None,
+                 parents=None,
+                 **kwargs):
+        """
+        Performs a QChem workflow with three steps: structure optimization,
+        frequency calculation, and single-point calculation.
+
+        Args:
+            molecule (Molecule): Input molecule.
+            name (str): Name for the Firework.
+            qchem_cmd (str): Command to run QChem. Defaults to qchem.
+            multimode (str): Parallelization scheme, either openmp or mpi.
+            input_file (str): Name of the QChem input file. Defaults to mol.qin.
+            output_file (str): Name of the QChem output file. Defaults to mol.qout.
+            qclog_file (str): Name of the QChem log file. Defaults to mol.qclog.
+            max_cores (int): Maximum number of cores to parallelize over. Defaults to 32.
+            qchem_input_params (dict): Specify kwargs for instantiating the input set parameters.
+                                       For example, if you want to change the DFT_rung, you should
+                                       provide: {"DFT_rung": ...}. Defaults to None.
+            sp_params (dict): Specify inputs for single-point calculation.
+            max_iterations (int): Number of perturbation -> optimization -> frequency
+                                  iterations to perform. Defaults to 10.
+            max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
+                                                applied to the molecule. Defaults to 0.3.
+            reversed_direction (bool): Whether to reverse the direction of the vibrational
+                                       frequency vectors. Defaults to False.
+            db_file (str): Path to file specifying db credentials to place output parsing.
+            parents ([Firework]): Parents of this particular Firework.
+            **kwargs: Other kwargs that are passed to Firework.__init__.
+        """
+
+        qchem_input_params = qchem_input_params or {}
+        t = []
+        t.append(
+            WriteCustomInput(rem=qchem_input_params.get("rem", {"job_type": "opt",
+                                                                "method": "wb97x-d",
+                                                                "basis": "6-311++g(d,p)",
+                                                                "max_scf_cycles": 200,
+                                                                "gen_scfman": True,
+                                                                "scf_algorithm": "diis",
+                                                                "geom_opt_max_cycles": 200}),
+                             molecule=molecule,
+                             opt=qchem_input_params.get("opt", None),
+                             pcm=qchem_input_params.get("pcm", None),
+                             solvent=qchem_input_params.get("solvent", None),
+                             smx=qchem_input_params.get("smx", None),
+                             input_file=input_file))
+        t.append(
+            RunQChemCustodian(
+                qchem_cmd=qchem_cmd,
+                multimode=multimode,
+                input_file=input_file,
+                output_file=output_file,
+                qclog_file=qclog_file,
+                max_cores=max_cores,
+                sp_params=sp_params,
+                job_type="opt_freq_sp",
+                gzipped_output=False,
+                handler_group="no_handler",
+                reversed_direction=reversed_direction
+            ))
+
+        calc_dir, input_file = os.path.split(input_file)
+        output_file = os.path.basename(output_file)
+
+        t.append(
+            QChemToDb(
+                db_file=db_file,
+                input_file=input_file,
+                output_file=output_file,
+                calc_dir=calc_dir,
+                additional_fields={"task_label": name}))
+        super(OptFreqSPFW, self).__init__(
             t,
             parents=parents,
             name=name,

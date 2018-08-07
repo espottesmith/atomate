@@ -96,13 +96,16 @@ class RunQChemCustodian(FiretaskBase):
         reversed_direction (bool): Whether to reverse the direction of the vibrational
                                    frequency vectors. Defaults to False.
 
+        *** Just for opt_freq_sp ***
+        sp_params (dict): Default is None. To be used if SP job is to have
+                          different configuration than opt and freq jobs
     """
     required_params = ["qchem_cmd"]
     optional_params = [
         "multimode", "input_file", "output_file", "max_cores", "qclog_file",
         "suffix", "scratch_dir", "save_scratch", "save_name", "max_errors",
         "max_iterations", "max_molecule_perturb_scale", "reversed_direction",
-        "job_type", "handler_group", "gzipped_output"
+        "job_type", "handler_group", "gzipped_output", "sp_params"
     ]
 
     def run_task(self, fw_spec):
@@ -126,6 +129,7 @@ class RunQChemCustodian(FiretaskBase):
                                               0.3)
         job_type = self.get("job_type", "normal")
         gzipped_output = self.get("gzipped_output", True)
+        sp_params = self.get("sp_params", None)
 
         handler_groups = {
             "default": [
@@ -163,6 +167,19 @@ class RunQChemCustodian(FiretaskBase):
                 save_scratch=save_scratch,
                 save_name=save_name,
                 max_cores=max_cores)
+
+        elif job_type == "opt_freq_sp":
+            jobs = QCJob.opt_freq_sp_job(
+                qchem_command=qchem_cmd,
+                multimode=multimode,
+                input_file=input_file,
+                output_file=output_file,
+                qclog_file=qclog_file,
+                sp_params=sp_params,
+                max_cores=max_cores,
+                scratch_dir=scratch_dir,
+                save_scratch=save_scratch,
+                save_name=save_name)
 
         else:
             raise ValueError("Unsupported job type: {}".format(job_type))

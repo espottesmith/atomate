@@ -97,7 +97,7 @@ class WriteCustomInput(FiretaskBase):
     required_params = ["rem"]
     # optional_params will need to be modified if more QChem sections are added QCInput
     optional_params = [
-        "molecule", "opt", "pcm", "solvent", "input_file", "write_to_dir"
+        "molecule", "opt", "pcm", "solvent", "smx", "input_file", "write_to_dir"
     ]
 
     def run_task(self, fw_spec):
@@ -116,13 +116,15 @@ class WriteCustomInput(FiretaskBase):
         opt = self.get("opt", None)
         pcm = self.get("pcm", None)
         solvent = self.get("solvent", None)
+        smx = self.get("smx", None)
 
         qcin = QCInput(
             molecule=molecule,
             rem=self["rem"],
             opt=opt,
             pcm=pcm,
-            solvent=solvent)
+            solvent=solvent,
+            smx=smx)
         qcin.write_file(input_file)
 
 

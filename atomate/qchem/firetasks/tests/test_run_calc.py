@@ -476,6 +476,221 @@ class TestRunCalcQChem(AtomateTest):
                         4
                     })
 
+    def test_RunQChemCustodian_OptFreqSP_basic_defaults(self):
+        with patch("atomate.qchem.firetasks.run_calc.Custodian"
+                   ) as custodian_patch:
+            with patch(
+                    "atomate.qchem.firetasks.run_calc.QCJob.opt_freq_sp_job"
+            ) as opt_freq_sp_patch:
+                firetask = RunQChemCustodian(
+                    qchem_cmd="qchem",
+                    input_file=os.path.join(module_dir, "..", "..",
+                                            "test_files", "opt_freq_sp_before",
+                                            "test.qin"),
+                    output_file=os.path.join(module_dir, "..", "..",
+                                             "test_files", "opt_freq_sp_before",
+                                             "test.qout"),
+                    job_type="opt_freq_sp",
+                )
+                firetask.run_task(fw_spec={})
+                custodian_patch.assert_called_once()
+                self.assertEqual(custodian_patch.call_args[0][0][0].as_dict(),
+                                 QChemErrorHandler(
+                                     input_file=os.path.join(
+                                         module_dir, "..", "..",
+                                         "test_files", "opt_freq_sp_before",
+                                         "test.qin"),
+                                     output_file=os.path.join(
+                                         module_dir, "..", "..",
+                                         "test_files", "opt_freq_sp_before",
+                                         "test.qout")).as_dict())
+                self.assertEqual(custodian_patch.call_args[1], {
+                    "max_errors": 5,
+                    "gzipped_output": True
+                })
+                self.assertEqual(
+                    opt_freq_sp_patch.call_args[1], {
+                        "qchem_command": "qchem",
+                        "multimode": "openmp",
+                        "input_file": os.path.join(module_dir, "..", "..",
+                                                   "test_files", "opt_freq_sp_before",
+                                                   "test.qin"),
+                        "output_file": os.path.join(module_dir, "..", "..",
+                                                    "test_files", "opt_freq_sp_before",
+                                                    "test.qout"),
+                        "qclog_file": "mol.qclog",
+                        "sp_params": None,
+                        "scratch_dir": "/dev/shm/qcscratch/",
+                        "save_scratch": False,
+                        "save_name": "default_save_name",
+                        "max_cores": 32
+                    })
+
+    def test_RunQChemCustodian_opt_freq_sp_using_fw_spec_defaults(self):
+        with patch("atomate.qchem.firetasks.run_calc.Custodian"
+                   ) as custodian_patch:
+            with patch(
+                    "atomate.qchem.firetasks.run_calc.QCJob.opt_freq_sp_job"
+            ) as opt_freq_sp_patch:
+                firetask = RunQChemCustodian(
+                    qchem_cmd=">>qchem_cmd<<",
+                    input_file=os.path.join(module_dir, "..", "..",
+                                            "test_files", "opt_freq_sp_before",
+                                            "test.qin"),
+                    output_file=os.path.join(module_dir, "..", "..",
+                                             "test_files", "opt_freq_sp_before",
+                                             "test.qout"),
+                    scratch_dir=">>scratch_dir<<",
+                    job_type="opt_freq_sp")
+                firetask.run_task(
+                    fw_spec={
+                        "_fw_env": {
+                            "qchem_cmd": "qchem -slurm",
+                            "scratch_dir": "/this/is/a/test"
+                        }
+                    })
+                custodian_patch.assert_called_once()
+                self.assertEqual(custodian_patch.call_args[0][0][0].as_dict(),
+                                 QChemErrorHandler(
+                                     input_file=os.path.join(
+                                         module_dir, "..", "..",
+                                         "test_files", "opt_freq_sp_before",
+                                         "test.qin"),
+                                     output_file=os.path.join(
+                                         module_dir, "..", "..",
+                                         "test_files", "opt_freq_sp_before",
+                                         "test.qout")).as_dict())
+                self.assertEqual(custodian_patch.call_args[1], {
+                    "max_errors": 5,
+                    "gzipped_output": True
+                })
+                self.assertEqual(
+                    opt_freq_sp_patch.call_args[1], {
+                        "qchem_command": "qchem -slurm",
+                        "multimode": "openmp",
+                        "input_file": os.path.join(module_dir, "..", "..",
+                                                   "test_files", "opt_freq_sp_before",
+                                                   "test.qin"),
+                        "output_file": os.path.join(module_dir, "..", "..",
+                                                    "test_files", "opt_freq_sp_before",
+                                                    "test.qout"),
+                        "qclog_file": "mol.qclog",
+                        "sp_params": None,
+                        "scratch_dir": "/this/is/a/test",
+                        "save_scratch": False,
+                        "save_name": "default_save_name",
+                        "max_cores": 32
+                    })
+
+    def test_RunQChemCustodian_opt_freq_sp_basic_not_defaults(self):
+        with patch("atomate.qchem.firetasks.run_calc.Custodian"
+                   ) as custodian_patch:
+            with patch(
+                    "atomate.qchem.firetasks.run_calc.QCJob.opt_freq_sp_job"
+            ) as opt_freq_sp_patch:
+                firetask = RunQChemCustodian(
+                    qchem_cmd="qchem -slurm",
+                    input_file=os.path.join(module_dir, "..", "..",
+                                            "test_files", "opt_freq_sp_before",
+                                            "test.qin"),
+                    output_file=os.path.join(module_dir, "..", "..",
+                                             "test_files", "opt_freq_sp_before",
+                                             "test.qout"),
+                    job_type="opt_freq_sp",
+                    max_cores=4,
+                    qclog_file="this_is_a_test.qclog",
+                    sp_params={"basis":"6-31g"},
+                    suffix="bad_idea",
+                    save_scratch=True,
+                    save_name="no_idea",
+                    max_errors=137,
+                    gzipped_output=False,
+                    handler_group="no_handler",
+                    scratch_dir="/this/is/a/test",
+                    multimode="mpi")
+                firetask.run_task(fw_spec={})
+                custodian_patch.assert_called_once()
+                self.assertEqual(custodian_patch.call_args[0][0], [])
+                self.assertEqual(custodian_patch.call_args[1], {
+                    "max_errors": 137,
+                    "gzipped_output": False
+                })
+                self.assertEqual(
+                    opt_freq_sp_patch.call_args[1], {
+                        "qchem_command": "qchem -slurm",
+                        "multimode": "mpi",
+                        "input_file": os.path.join(module_dir, "..", "..",
+                                                   "test_files", "opt_freq_sp_before",
+                                                   "test.qin"),
+                        "output_file": os.path.join(module_dir, "..", "..",
+                                                    "test_files", "opt_freq_sp_before",
+                                                    "test.qout"),
+                        "qclog_file": "this_is_a_test.qclog",
+                        "sp_params": {"basis": "6-31g"},
+                        "scratch_dir": "/this/is/a/test",
+                        "save_scratch": True,
+                        "save_name": "no_idea",
+                        "max_cores": 4
+                    })
+
+    def test_RunQChemCustodian_opt_freq_sp_using_fw_spec_not_defaults(self):
+        self.maxDiff = None
+        with patch("atomate.qchem.firetasks.run_calc.Custodian"
+                   ) as custodian_patch:
+            with patch(
+                    "atomate.qchem.firetasks.run_calc.QCJob.opt_freq_sp_job"
+            ) as opt_freq_sp_patch:
+                firetask = RunQChemCustodian(
+                    qchem_cmd=">>qchem_cmd<<",
+                    input_file=os.path.join(module_dir, "..", "..",
+                                            "test_files", "opt_freq_sp_before",
+                                            "test.qin"),
+                    output_file=os.path.join(module_dir, "..", "..",
+                                             "test_files", "opt_freq_sp_before",
+                                             "test.qout"),
+                    job_type="opt_freq_sp",
+                    max_cores=4,
+                    qclog_file="this_is_a_test.qclog",
+                    sp_params={"basis": "6-31g"},
+                    suffix="bad_idea",
+                    save_scratch=True,
+                    save_name="no_idea",
+                    max_errors=137,
+                    gzipped_output=False,
+                    handler_group="no_handler",
+                    scratch_dir=">>scratch_dir<<",
+                    multimode="mpi")
+                firetask.run_task(
+                    fw_spec={
+                        "_fw_env": {
+                            "qchem_cmd": "qchem -slurm",
+                            "scratch_dir": "/this/is/a/test"
+                        }
+                    })
+                custodian_patch.assert_called_once()
+                self.assertEqual(custodian_patch.call_args[0][0], [])
+                self.assertEqual(custodian_patch.call_args[1], {
+                    "max_errors": 137,
+                    "gzipped_output": False
+                })
+                self.assertEqual(
+                    opt_freq_sp_patch.call_args[1], {
+                        "qchem_command": "qchem -slurm",
+                        "multimode": "mpi",
+                        "input_file": os.path.join(module_dir, "..", "..",
+                                            "test_files", "opt_freq_sp_before",
+                                            "test.qin"),
+                        "output_file": os.path.join(module_dir, "..", "..",
+                                            "test_files", "opt_freq_sp_before",
+                                            "test.qout  "),
+                        "qclog_file": "this_is_a_test.qclog",
+                        "sp_params" : {"basis": "6-31g"},
+                        "scratch_dir": "/this/is/a/test",
+                        "save_scratch": True,
+                        "save_name": "no_idea",
+                        "max_cores": 4
+                    })
+
 
 class TestFakeRunQChem(AtomateTest):
     def setUp(self, lpad=False):

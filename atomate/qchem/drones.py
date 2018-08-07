@@ -184,7 +184,7 @@ class QChemDrone(AbstractDrone):
                         "final_energy"]
 
             if d["output"]["job_type"] == "sp":
-                d["output"]["final_energy"] = d_calc_final["SCF"][0][-1][0]
+                d["output"]["final_energy"] = d_calc_final.get("final_energy_sp")
 
             if "special_run_type" in d:
                 if d["special_run_type"] == "frequency_flattener":
@@ -256,6 +256,7 @@ class QChemDrone(AbstractDrone):
         d["input"]["opt"] = temp_input.opt
         d["input"]["pcm"] = temp_input.pcm
         d["input"]["solvent"] = temp_input.solvent
+        d["input"]["smx"] = temp_input.smx
         d["task"] = {"type": taskname, "name": taskname}
         return d
 
@@ -286,6 +287,7 @@ class QChemDrone(AbstractDrone):
                     d["input"]["opt"] = multi_in[ii].opt
                     d["input"]["pcm"] = multi_in[ii].pcm
                     d["input"]["solvent"] = multi_in[ii].solvent
+                    d["input"]["smx"] = multi_in[ii].smx
                     d["task"] = {"type": key, "name": "calc" + str(ii)}
                     to_return.append(d)
             return to_return

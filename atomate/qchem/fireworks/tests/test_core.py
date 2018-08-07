@@ -5,11 +5,11 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 import os
 import unittest
 
-from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet
+from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet, WriteCustomInput
 from atomate.qchem.firetasks.run_calc import RunQChemCustodian
 from atomate.qchem.firetasks.parse_outputs import QChemToDb
 from atomate.qchem.firetasks.fragmenter import FragmentMolecule
-from atomate.qchem.fireworks.core import OptimizeFW, FrequencyFlatteningOptimizeFW, FragmentFW
+from atomate.qchem.fireworks.core import OptimizeFW, FrequencyFlatteningOptimizeFW, OptFreqSPFW, FragmentFW
 from atomate.utils.testing import AtomateTest
 from pymatgen.io.qchem.outputs import QCOutput
 
@@ -186,6 +186,96 @@ class TestCore(AtomateTest):
         self.assertEqual(firework.parents, [])
         self.assertEqual(firework.name,
                          "special frequency flattening structure optimization")
+
+    def test_OptFreqSPFW_defaults(self):
+        firework = OptFreqSPFW(molecule=self.act_mol)
+        self.assertEqual(firework.tasks[0].as_dict(),
+                         WriteCustomInput(rem={"job_type": "opt",
+                                               "method": "wb97x-d",
+                                               "basis": "6-311++g(d,p)",
+                                               "max_scf_cycles": 200,
+                                               "gen_scfman": True,
+                                               "scf_algorithm": "diis",
+                                               "geom_opt_max_cycles": 200},
+                                          opt=None,
+                                          pcm=None,
+                                          solvent=None,
+                                          smx=None,
+                                          molecule=self.act_mol,
+                                          input_file="mol.qin").as_dict())
+        self.assertEqual(firework.tasks[1].as_dict(),
+                         RunQChemCustodian(
+                             qchem_cmd="qchem",
+                             multimode="openmp",
+                             input_file="mol.qin",
+                             output_file="mol.qout",
+                             qclog_file="mol.qclog",
+                             max_cores=64,
+                             job_type="opt_freq_sp",
+                             sp_params=None,
+                             handler_group="no_handler",
+                             reversed_direction=False,
+                             gzipped_output=False).as_dict())
+        self.assertEqual(firework.tasks[2].as_dict(),
+                         QChemToDb(
+                             db_file=None,
+                             input_file="mol.qin",
+                             output_file="mol.qout",
+                             calc_dir='',
+                             additional_fields={
+                                 "task_label": "opt_freq_sp",
+                             }).as_dict())
+        self.assertEqual(firework.parents, [])
+        self.assertEqual(firework.name, "opt_freq_sp")
+
+    def test_OptFreqSPFW_not_defaults(self):
+        firework = OptFreqSPFW(
+            molecule=self.act_mol,
+            name="very special opt-freq-sp job",
+            qchem_cmd="qchem -slurm",
+            multimode="mpi",
+            input_file="different.qin",
+            output_file="not_default.qout",
+            max_cores=12,
+            qchem_input_params={"rem": {"solvent_method": "pcm"},
+                                "pcm": {"theory": "iefpcm"},
+                                "solvent": {"dielectric": 80.4}},
+            sp_params={"rem": {"basis": "6-31g*"}},
+            reversed_direction=True,
+            db_file=os.path.join(db_dir, "db.json"),
+            parents=None)
+        self.assertEqual(firework.tasks[0].as_dict(),
+                         WriteCustomInput(rem={"solvent_method": "pcm"},
+                                          opt=None,
+                                          pcm={"theory": "iefpcm"},
+                                          solvent={"dielectric": 80.4},
+                                          smx=None,
+                                          molecule=self.act_mol,
+                                          input_file="different.qin").as_dict())
+        self.assertEqual(firework.tasks[1].as_dict(),
+                         RunQChemCustodian(
+                             qchem_cmd="qchem -slurm",
+                             multimode="mpi",
+                             input_file="different.qin",
+                             output_file="not_default.qout",
+                             qclog_file="mol.qclog",
+                             max_cores=12,
+                             job_type="opt_freq_sp",
+                             handler_group="no_handler",
+                             gzipped_output=False,
+                             sp_params={"rem": {"basis": "6-31g*"}},
+                             reversed_direction=True).as_dict())
+        self.assertEqual(
+            firework.tasks[2].as_dict(),
+            QChemToDb(
+                db_file=os.path.join(db_dir, "db.json"),
+                input_file="different.qin",
+                output_file="not_default.qout",
+                calc_dir='',
+                additional_fields={
+                    "task_label": "very special opt-freq-sp job"}).as_dict())
+        self.assertEqual(firework.parents, [])
+        self.assertEqual(firework.name, "very special opt-freq-sp job")
 
     def test_FragmentFW_defaults(self):
         firework = FragmentFW(molecule=self.act_mol)
