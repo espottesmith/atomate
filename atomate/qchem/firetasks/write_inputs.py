@@ -95,7 +95,8 @@ class WriteCustomInput(FiretaskBase):
         """
 
     required_params = ["rem"]
-    # optional_params will need to be modified if more QChem sections are added QCInput
+    # optional_params will need to be modified if more QChem sections are added
+    # to QCInput
     optional_params = [
         "molecule", "opt", "pcm", "solvent", "smx", "input_file", "write_to_dir"
     ]
