@@ -682,7 +682,7 @@ class TestRunCalcQChem(AtomateTest):
                                             "test.qin"),
                         "output_file": os.path.join(module_dir, "..", "..",
                                             "test_files", "opt_freq_sp_before",
-                                            "test.qout  "),
+                                            "test.qout"),
                         "qclog_file": "this_is_a_test.qclog",
                         "sp_params" : {"basis": "6-31g"},
                         "scratch_dir": "/this/is/a/test",
