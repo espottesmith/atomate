@@ -189,7 +189,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
         """
 
         qchem_input_params = qchem_input_params or {}
-        t = []
+        t = list()
         t.append(
             WriteInputFromIOSet(
                 molecule=molecule,
@@ -207,11 +207,16 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 max_iterations=max_iterations,
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
                 reversed_direction=reversed_direction))
+
+        calc_dir, input_file = os.path.split(input_file)
+        output_file = os.path.basename(output_file)
+
         t.append(
             QChemToDb(
                 db_file=db_file,
                 input_file=input_file,
                 output_file=output_file,
+                calc_dir=calc_dir,
                 additional_fields={
                     "task_label": name,
                     "special_run_type": "frequency_flattener"
