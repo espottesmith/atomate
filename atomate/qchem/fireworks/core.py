@@ -154,6 +154,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                  multimode="openmp",
                  input_file="mol.qin",
                  output_file="mol.qout",
+                 qclog_file="mol.qclog",
                  max_cores=32,
                  qchem_input_params=None,
                  max_iterations=10,
@@ -202,11 +203,13 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 multimode=multimode,
                 input_file=input_file,
                 output_file=output_file,
+                qclog_file=qclog_file,
                 max_cores=max_cores,
                 job_type="opt_with_frequency_flattener",
                 max_iterations=max_iterations,
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
-                reversed_direction=reversed_direction))
+                reversed_direction=reversed_direction,
+                gzipped_output=False))
         t.append(
             QChemToDb(
                 db_file=db_file,
