@@ -228,6 +228,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
         qchem_input_params = qchem_input_params or {}
         input_file="mol.qin"
         output_file="mol.qout"
+        qclog_file = "mol.qclog"
         t = []
         t.append(
             WriteInputFromIOSet(
