@@ -14,6 +14,8 @@ from atomate.qchem.firetasks.parse_outputs import QChemToDb
 from atomate.qchem.firetasks.run_calc import RunQChemCustodian
 from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet
 from atomate.qchem.firetasks.fragmenter import FragmentMolecule
+from atomate.qchem.firetasks.ion_placer import PlaceIon
+from atomate.qchem.firetasks.gather_geoms import GatherGeometries
 
 __author__ = "Samuel Blau"
 __copyright__ = "Copyright 2018, The Materials Project"
@@ -182,7 +184,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                  qchem_input_params=None,
                  max_iterations=10,
                  max_molecule_perturb_scale=0.3,
-                 reversed_direction=False,
+                 linked=False,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -218,8 +220,6 @@ class FrequencyFlatteningOptimizeFW(Firework):
                                   iterations to perform. Defaults to 10.
             max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
                                                 applied to the molecule. Defaults to 0.3.
-            reversed_direction (bool): Whether to reverse the direction of the vibrational
-                                       frequency vectors. Defaults to False.
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
             **kwargs: Other kwargs that are passed to Firework.__init__.
@@ -245,7 +245,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 job_type="opt_with_frequency_flattener",
                 max_iterations=max_iterations,
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
-                reversed_direction=reversed_direction))
+                linked=linked))
         t.append(
             QChemToDb(
                 db_file=db_file,
@@ -253,7 +253,8 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 output_file=output_file,
                 additional_fields={
                     "task_label": name,
-                    "special_run_type": "frequency_flattener"
+                    "special_run_type": "frequency_flattener",
+                    "linked": linked
                 }))
         super(FrequencyFlatteningOptimizeFW, self).__init__(
             t,
@@ -269,10 +270,8 @@ class FragmentFW(Firework):
                  open_rings=True,
                  additional_charges=None,
                  do_triplets=True,
+                 linked=False,
                  name="fragment and optimize",
-                 qchem_cmd=">>qchem_cmd<<",
-                 multimode=">>multimode<<",
-                 max_cores=">>max_cores<<",
                  qchem_input_params=None,
                  db_file=None,
                  check_db=True,
@@ -291,9 +290,6 @@ class FragmentFW(Firework):
             do_triplets (bool): Whether to simulate triplets as well as singlets for molecules with an
                                 even number of electrons. Defaults to True.
             name (str): Name for the Firework.
-            qchem_cmd (str): Command to run QChem. Supports env_chk.
-            multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
-            max_cores (int): Maximum number of cores to parallelize over. Supports env_chk.
             qchem_input_params (dict): Specify kwargs for instantiating the input set parameters.
                                        Basic uses would be to modify the default inputs of the set,
                                        such as dft_rung, basis_set, pcm_dielectric, scf_algorithm,
@@ -329,11 +325,74 @@ class FragmentFW(Firework):
                 open_rings=open_rings,
                 additional_charges=additional_charges,
                 do_triplets=do_triplets,
-                max_cores=max_cores,
+                linked=linked,
                 qchem_input_params=qchem_input_params,
                 db_file=db_file,
                 check_db=check_db))
         super(FragmentFW, self).__init__(
+            t,
+            parents=parents,
+            name=name,
+            **kwargs)
+
+
+class PlaceIonFW(Firework):
+    def __init__(self,
+                 molecule=None,
+                 mulliken=None,
+                 ion=None,
+                 charges=None,
+                 stop_num=None,
+                 do_triplets=True,
+                 linked=False,
+                 name="place ions and optimize",
+                 qchem_input_params=None,
+                 test_positions=None,
+                 ref_dirs=None,
+                 parents=None,
+                 **kwargs):
+        """
+        """
+
+        qchem_input_params = qchem_input_params or {}
+        charges = charges or [0]
+        ion = ion or "Li"
+        stop_num = stop_num or 100000
+        t = []
+        t.append(
+            PlaceIon(
+                molecule=molecule,
+                mulliken=mulliken,
+                ion=ion,
+                charges=charges,
+                stop_num=stop_num,
+                do_triplets=do_triplets,
+                linked=linked,
+                qchem_input_params=qchem_input_params,
+                test_positions=test_positions,
+                ref_dirs=ref_dirs))
+        super(PlaceIonFW, self).__init__(
+            t,
+            parents=parents,
+            name=name,
+            **kwargs)
+
+
+class GatherGeomsFW(Firework):
+    def __init__(self,
+                 prefix,
+                 db_file=">>db_file<<",
+                 name="gather geometries",
+                 parents=None,
+                 **kwargs):
+        """
+        """
+        t = []
+        t.append(
+            GatherGeometries(
+                prefix=prefix,
+                db_file=db_file))
+        super(GatherGeomsFW, self).__init__(
             t,
             parents=parents,
             name=name,
