@@ -36,6 +36,12 @@ def get_ion_placement_wf(molecule,
     """
     """
 
+    fw_name = "place ions and optimize"
+    gather_name = "gather geometries"
+    if name != "place ions and optimize then gather":
+        fw_name = name
+        gather_name = "_"+name
+
     qchem_input_params = qchem_input_params or {}
     if pcm_dielectric != None:
         qchem_input_params["pcm_dielectric"] = pcm_dielectric
@@ -58,7 +64,7 @@ def get_ion_placement_wf(molecule,
             stop_num=stop_num,
             do_triplets=do_triplets,
             linked=linked,
-            name="place ions and optimize",
+            name=fw_name,
             qchem_input_params=qchem_input_params,
             test_positions=test_positions,
             ref_dirs=ref_dirs,
@@ -68,7 +74,7 @@ def get_ion_placement_wf(molecule,
         fw3 = GatherGeomsFW(
             prefix="ion_pos_",
             db_file=db_file,
-            name="gather geometries",
+            name=gather_name,
             parents=fw2)
 
         fws = [fw1, fw2, fw3]
@@ -83,7 +89,7 @@ def get_ion_placement_wf(molecule,
             stop_num=stop_num,
             do_triplets=do_triplets,
             linked=linked,
-            name="place ions and optimize",
+            name=fw_name,
             qchem_input_params=qchem_input_params,
             test_positions=test_positions,
             ref_dirs=ref_dirs)
@@ -92,7 +98,7 @@ def get_ion_placement_wf(molecule,
         fw2 = GatherGeomsFW(
             prefix="ion_pos_",
             db_file=db_file,
-            name="gather geometries",
+            name=gather_name,
             parents=fw1)
 
         fws = [fw1, fw2]
