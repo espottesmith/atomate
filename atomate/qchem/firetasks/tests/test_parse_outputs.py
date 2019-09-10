@@ -4,7 +4,6 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 
 import os
 import unittest
-import shutil
 
 from atomate.qchem.firetasks.parse_outputs import QChemToDb
 from atomate.utils.testing import AtomateTest
@@ -50,6 +49,9 @@ class TestParseOutputQChem(AtomateTest):
             ft.run_task({})
             self.assertEqual(FWAction_patch.call_args[1]["update_spec"]["ion_pos_0"]["energy"],-349.91898078154)
 
+    #TODO:
+    def test_parse_ts_search(self):
+        pass
 
 if __name__ == "__main__":
     unittest.main()

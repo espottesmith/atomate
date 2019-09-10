@@ -33,7 +33,7 @@ __credits__ = "Brandon Wood, Shyam Dwaraknath, Xiaohui Qu, Kiran Mathew, Shyue P
 
 logger = get_logger(__name__)
 
-
+#TODO: Redo tests (at least some)
 class QChemDrone(AbstractDrone):
     """
     A QChem drone to parse QChem calculations and insert an organized, searchable entry into the database.
@@ -65,7 +65,7 @@ class QChemDrone(AbstractDrone):
         self.runs = ["orig"] + self.runs
         self.additional_fields = additional_fields or {}
 
-    def assimilate(self, path, input_file, output_file, multirun):
+    def assimilate(self, path, input_file, output_file, multirun, additional_files=None):
         """
         Parses qchem input and output files and insert the result into the db.
 
@@ -75,6 +75,9 @@ class QChemDrone(AbstractDrone):
             output_file (str): base name of the output file(s)
             multirun (bool): Whether the job to parse includes multiple
                              calculations in one input / output pair.
+            additional_files (list): list of filenames which, in addition to the input and output
+                                     files, must be present. This is most relevant for string
+                                     methods (ex: FSM), where multiple outputs are generated.
 
         Returns:
             d (dict): a task dictionary
@@ -88,12 +91,18 @@ class QChemDrone(AbstractDrone):
                     raise AssertionError("Can only have inequal number of input and output files when there is a saved copy of the original input!")
             else:
                 raise AssertionError("Inequal number of input and output files!")
+        if additional_files is not None:
+            in_path = os.listdir(path)
+            for filename in additional_files:
+                if filename not in in_path:
+                    raise ValueError("Additional file {} not found!".format(filename))
         if len(qcinput_files) > 0 and len(qcoutput_files) > 0:
             d = self.generate_doc(path, qcinput_files, qcoutput_files,
                                   multirun)
             self.post_process(path, d)
         else:
             raise ValueError("Either input or output not found!")
+
         self.validate_doc(d)
         return jsanitize(d, strict=True, allow_bson=True)
 
@@ -145,9 +154,19 @@ class QChemDrone(AbstractDrone):
             # to the initial input molecule or rem params, which we might want to filter for later
             if len(qcinput_files) > len(qcoutput_files):
                 orig_input = QCInput.from_file(os.path.join(dir_name, qcinput_files.pop("orig")))
-                d["orig"] = {}
-                d["orig"]["molecule"] = orig_input.molecule.as_dict()
-                d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
+                d["orig"] = dict()
+                # Cover case of FSM, where multiple molecules are involved in the input
+                if isinstance(orig_input.molecule, dict):
+                    d["orig"]["molecule"] = dict()
+                    for key, molecules in orig_input.molecule.items():
+                        d["orig"]["molecule"][key] = list()
+                        for molecule in molecules:
+                            mol = molecule.as_dict()
+                            mol["charge"] = int(mol["charge"])
+                            d["orig"]["molecule"][key].append(mol)
+                else:
+                    d["orig"]["molecule"] = orig_input.molecule.as_dict()
+                    d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
                 d["orig"]["rem"] = orig_input.rem
                 d["orig"]["opt"] = orig_input.opt
                 d["orig"]["pcm"] = orig_input.pcm
@@ -190,7 +209,7 @@ class QChemDrone(AbstractDrone):
                 "mulliken": d_calc_final["Mulliken"][-1]
             }
 
-            if d["output"]["job_type"] == "opt" or d["output"]["job_type"] == "optimization":
+            if d["output"]["job_type"] in ["opt", "optimization", "ts"]:
                 if "molecule_from_optimized_geometry" in d_calc_final:
                     d["output"]["optimized_molecule"] = d_calc_final[
                         "molecule_from_optimized_geometry"]
@@ -202,7 +221,7 @@ class QChemDrone(AbstractDrone):
                         d_calc_final["opt_constraint"][0],
                         float(d_calc_final["opt_constraint"][6])
                     ]
-            if d["output"]["job_type"] == "freq" or d["output"]["job_type"] == "frequency":
+            if d["output"]["job_type"] in ["freq", "frequency"]:
                 d["output"]["frequencies"] = d_calc_final["frequencies"]
                 d["output"]["enthalpy"] = d_calc_final["total_enthalpy"]
                 d["output"]["entropy"] = d_calc_final["total_entropy"]
@@ -214,6 +233,23 @@ class QChemDrone(AbstractDrone):
 
             if d["output"]["job_type"] == "sp":
                 d["output"]["final_energy"] = d_calc_final["final_energy"]
+
+            if d["output"]["job_type"] == "fsm":
+                d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
+                d["input"]["initial_product_molecules"] = d_calc_final["string_initial_product_molecules"]
+                d["input"]["initial_reactant_geometry"] = d_calc_final["string_initial_reactant_geometry"]
+                d["input"]["initial_product_geometry"] = d_calc_final["string_initial_product_geometry"]
+
+                d["output"]["num_images"] = d_calc_final["string_num_images"]
+                d["output"]["string_energies"] = d_calc_final["string_energies"]
+                d["output"]["string_relative_energies"] = d_calc_final["string_relative_energies"]
+                d["output"]["string_geometries"] = d_calc_final["string_geometries"]
+                d["output"]["string_molecules"] = d_calc_final["string_molecules"]
+                d["output"]["string_absolute_distances"] = d_calc_final["string_absolute_distances"]
+                d["output"]["string_proportional_distances"] = d_calc_final["string_proportional_distances"]
+                d["output"]["string_gradient_magnitudes"] = d_calc_final["string_gradient_magnitudes"]
+                d["output"]["max_energy"] = d_calc_final["string_max_energy"]
+                d["output"]["ts_guess"] = d_calc_final["string_ts_guess"]
 
             if d_calc_final["completion"]:
                 total_cputime = 0.0

@@ -67,7 +67,7 @@ class QChemToDb(FiretaskBase):
         # parse the QChem directory
         logger.info("PARSING DIRECTORY: {}".format(calc_dir))
 
-        additional_fields = self.get("additional_fields", [])
+        additional_fields = self.get("additional_fields", list())
 
         drone = QChemDrone(additional_fields=additional_fields)
 
@@ -86,11 +86,12 @@ class QChemToDb(FiretaskBase):
         update_spec = {}
         if task_doc.get("output").get("optimized_molecule"):
             is_ion_pos = False
+            ts_search = False
             if "task_label" in additional_fields:
                 if len(additional_fields["task_label"]) > 7:
                     if additional_fields["task_label"][0:7] == "ion_pos":
                         is_ion_pos = True
-                        tmp = {}
+                        tmp = dict()
                         tmp["molecule"] = task_doc["output"]["optimized_molecule"]
                         tmp["mulliken"] = task_doc["output"]["mulliken"]
                         tmp["energy"] = task_doc["output"]["final_energy"]
@@ -98,7 +99,20 @@ class QChemToDb(FiretaskBase):
                         tmp["linked"] = task_doc["linked"]
                         tmp["orig"] = task_doc["orig"]
                         update_spec[additional_fields["task_label"]] = tmp
-            if not is_ion_pos:
+                    elif additional_fields["task_label"].startswith("ts_search"):
+                        ts_search = True
+                        tmp = dict()
+                        tmp["molecule"] = task_doc["output"]["ts_guess"]
+                        tmp["mulliken"] = task_doc["output"]["mulliken"]
+                        tmp["energy"] = task_doc["output"]["max_energy"]
+                        tmp["calc_dir"] = calc_dir
+                        tmp["linked"] = task_doc["linked"]
+                        tmp["orig"] = task_doc["orig"]
+                        update_spec[additional_fields["task_label"]] = tmp
+            if ts_search:
+                update_spec["prev_calc_molecule"] = task_doc["output"]["ts_guess"]
+                update_spec["prev_calc_mulliken"] = task_doc["output"]["mulliken"]
+            elif not is_ion_pos:
                 update_spec["prev_calc_molecule"] = task_doc["output"]["optimized_molecule"]
                 update_spec["prev_calc_mulliken"] = task_doc["output"]["mulliken"]
             

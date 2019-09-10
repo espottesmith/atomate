@@ -294,6 +294,13 @@ class QChemDroneTest(unittest.TestCase):
         self.assertIn("dir_name", doc)
         self.assertEqual(len(doc["calcs_reversed"]), 1)
 
+    #TODO
+    def test_assimilate_fsm(self):
+        pass
+
+    def test_assimilate_ts(self):
+        pass
+
     def test_sp_with_orig(self):
         drone = QChemDrone()
         doc = drone.assimilate(

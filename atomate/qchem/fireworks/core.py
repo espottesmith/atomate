@@ -1,15 +1,13 @@
 # coding: utf-8
 
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-import copy
-
-
 # Defines standardized Fireworks that can be chained easily to perform various
 # sequences of QChem calculations.
 
-from pymatgen.io.qchem.inputs import QCInput
-from pymatgen.io.qchem.outputs import QCOutput
+from __future__ import absolute_import, division, print_function, \
+    unicode_literals
+
+from pymatgen.core.structure import Molecule
+from pymatgen.io.qchem.utils import map_atoms_reaction
 
 from fireworks import Firework
 
@@ -327,6 +325,111 @@ class FrequencyFW(Firework):
             **kwargs)
 
 
+class FreezingStringFW(Firework):
+    def __init__(self,
+                 reactants,
+                 products,
+                 name="freezing string method calculation",
+                 qchem_cmd=">>qchem_cmd<<",
+                 multimode=">>multimode<<",
+                 max_cores=">>max_cores<<",
+                 qchem_input_params=None,
+                 db_file=None,
+                 parents=None,
+                 map_atoms=True,
+                 **kwargs):
+        """
+        Identify a guess geometry for a reaction transition state using the freezing string method.
+
+        Args:
+            molecule (Molecule): Input molecule.
+            name (str): Name for the Firework.
+            qchem_cmd (str): Command to run QChem. Supports env_chk.
+            multimode (str): Parallelization scheme, either openmp or mpi. Defaults to openmp.
+            max_cores (int): Maximum number of cores to parallelize over. Supports env_chk.
+            qchem_input_params (dict): Specify kwargs for instantiating the input set parameters.
+                                       Basic uses would be to modify the default inputs of the set,
+                                       such as dft_rung, basis_set, pcm_dielectric, scf_algorithm,
+                                       or max_scf_cycles. See pymatgen/io/qchem/sets.py for default
+                                       values of all input parameters. For instance, if a user wanted
+                                       to use a more advanced DFT functional, include a pcm with a
+                                       dielectric of 30, and use a larger basis, the user would set
+                                       qchem_input_params = {"dft_rung": 5, "pcm_dielectric": 30,
+                                       "basis_set": "6-311++g**"}. However, more advanced customization
+                                       of the input is also possible through the overwrite_inputs key
+                                       which allows the user to directly modify the rem, pcm, smd, and
+                                       solvent dictionaries that QChemDictSet passes to inputs.py to
+                                       print an actual input file. For instance, if a user wanted to
+                                       set the sym_ignore flag in the rem section of the input file
+                                       to true, then they would set qchem_input_params = {"overwrite_inputs":
+                                       "rem": {"sym_ignore": "true"}}. Of course, overwrite_inputs
+                                       could be used in conjuction with more typical modifications,
+                                       as seen in the test_double_FF_opt workflow test.
+            db_file (str): Path to file specifying db credentials to place output parsing.
+            parents ([Firework]): Parents of this particular Firework.
+            **kwargs: Other kwargs that are passed to Firework.__init__.
+        """
+
+        qchem_input_params = qchem_input_params or {}
+        input_file = "mol.qin"
+        output_file = "mol.qout"
+
+        if map_atoms:
+            # Need to think about how to make this a FireTask
+            if len(products) == 1:
+                mapping = map_atoms_reaction(reactants, products[0])
+                species = [None for i in range(len(products[0]))]
+                coords = [None for i in range(len(products[0]))]
+                for e, site in enumerate(products[0]):
+                    species[mapping[e]] = site.species
+                    coords[mapping[e]] = site.coords
+                product = Molecule(species, coords, charge=products[0].charge,
+                                   spin_multiplicity=products[0].spin_multiplicity)
+                molecule = {"reactants": reactants, "products": product}
+            elif len(reactants) == 1:
+                mapping = map_atoms_reaction(products, reactants[0])
+                species = list()
+                coords = list()
+                for e, site in enumerate(reactants[0]):
+                    species[mapping[e]] = site.species
+                    coords[mapping[e]] = site.coords
+                reactant = Molecule(species, coords, charge=reactants[0].charge,
+                                   spin_multiplicity=reactants[0].spin_multiplicity)
+                molecule = {"reactants": reactant, "products": products}
+            else:
+                raise ValueError("Cannot map atoms with more than one product and more than one "
+                                 "reactant.")
+        else:
+            molecule = {"reactants": reactants, "products": products}
+
+        t = list()
+        t.append(
+            WriteInputFromIOSet(
+                molecule=molecule,
+                qchem_input_set="FreqSet",
+                input_file=input_file,
+                qchem_input_params=qchem_input_params))
+        t.append(
+            RunQChemCustodian(
+                qchem_cmd=qchem_cmd,
+                multimode=multimode,
+                input_file=input_file,
+                output_file=output_file,
+                max_cores=max_cores,
+                job_type="normal"))
+        t.append(
+            QChemToDb(
+                db_file=db_file,
+                input_file=input_file,
+                output_file=output_file,
+                additional_fields={"task_label": name}))
+        super(FrequencyFW, self).__init__(
+            t,
+            parents=parents,
+            name=name,
+            **kwargs)
+
+
 class FrequencyFlatteningOptimizeFW(Firework):
     def __init__(self,
                  molecule=None,
@@ -497,123 +600,11 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                 output_file=output_file,
                 additional_fields={
                     "task_label": name,
-                    "special_run_type": "opt_frequency_flattener",
+                    "special_run_type": "ts_frequency_flattener",
                     "linked": linked
                 }))
 
         super(FrequencyFlatteningTransitionStateFW, self).__init__(
-            t,
-            parents=parents,
-            name=name,
-            **kwargs)
-
-
-class TransitionStateSearchFW(Firework):
-    def __init__(self,
-                 molecule=None,
-                 name="transition state search",
-                 qchem_cmd=">>qchem_cmd<<",
-                 multimode=">>multimode<<",
-                 max_cores=">>max_cores<<",
-                 qchem_input_params=None,
-                 max_iterations=10,
-                 max_molecule_perturb_scale=0.3,
-                 linked=False,
-                 db_file=None,
-                 parents=None,
-                 **kwargs):
-        """
-        First, perform a search over the potential energy surface between reactants and products in
-        order to determine a guess for the transition state. Then, iteratively optimize the
-        transition state structure and flatten imaginary frequencies to ensure that the resulting
-        structure is a true transition state.
-
-        Args:
-            molecule (Molecule): Input molecule.
-            name (str): Name for the Firework.
-            qchem_cmd (str): Command to run QChem. Supports env_chk.
-            multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
-            max_cores (int): Maximum number of cores to parallelize over. Supports env_chk.
-            qchem_input_params (dict): Specify kwargs for instantiating the input set parameters.
-                                       Basic uses would be to modify the default inputs of the set,
-                                       such as dft_rung, basis_set, pcm_dielectric, scf_algorithm,
-                                       or max_scf_cycles. See pymatgen/io/qchem/sets.py for default
-                                       values of all input parameters. For instance, if a user wanted
-                                       to use a more advanced DFT functional, include a pcm with a
-                                       dielectric of 30, and use a larger basis, the user would set
-                                       qchem_input_params = {"dft_rung": 5, "pcm_dielectric": 30,
-                                       "basis_set": "6-311++g**"}. However, more advanced customization
-                                       of the input is also possible through the overwrite_inputs key
-                                       which allows the user to directly modify the rem, pcm, smd, and
-                                       solvent dictionaries that QChemDictSet passes to inputs.py to
-                                       print an actual input file. For instance, if a user wanted to
-                                       set the sym_ignore flag in the rem section of the input file
-                                       to true, then they would set qchem_input_params = {"overwrite_inputs":
-                                       "rem": {"sym_ignore": "true"}}. Of course, overwrite_inputs
-                                       could be used in conjuction with more typical modifications,
-                                       as seen in the test_double_FF_opt workflow test.
-            max_iterations (int): Number of perturbation -> optimization -> frequency
-                                  iterations to perform. Defaults to 10.
-            max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
-                                                applied to the molecule. Defaults to 0.3.
-            db_file (str): Path to file specifying db credentials to place output parsing.
-            parents ([Firework]): Parents of this particular Firework.
-            **kwargs: Other kwargs that are passed to Firework.__init__.
-        """
-
-        qchem_input_params = qchem_input_params or {}
-        input_file = "mol.qin"
-        output_file = "mol.qout"
-
-        t = list()
-        t.append(
-            WriteInputFromIOSet(
-                molecule=molecule,
-                qchem_input_set="FreezingStringSet",
-                input_file=input_file,
-                qchem_input_params=qchem_input_params))
-        t.append(RunQChemCustodian(
-                qchem_cmd=qchem_cmd,
-                multimode=multimode,
-                input_file=input_file,
-                output_file=output_file,
-                max_cores=max_cores,
-                job_type="normal",
-                suffix=".fsm"))
-
-        # Parse for highest-energy string image
-        fsm_out = QCOutput("{}.fsm".format(output_file))
-
-        t.append(
-            WriteInputFromIOSet(
-                molecule=fsm_out.data.get("string_ts_guess"),
-                qchem_input_set="TransitionStateSet",
-                input_file=input_file,
-                qchem_input_params=qchem_input_params))
-        t.append(
-            RunQChemCustodian(
-                qchem_cmd=qchem_cmd,
-                multimode=multimode,
-                input_file=input_file,
-                output_file=output_file,
-                max_cores=max_cores,
-                job_type="opt_with_frequency_flattener",
-                max_iterations=max_iterations,
-                max_molecule_perturb_scale=max_molecule_perturb_scale,
-                transition_state=True,
-                linked=linked))
-        t.append(
-            QChemToDb(
-                db_file=db_file,
-                input_file=input_file,
-                output_file=output_file,
-                additional_fields={
-                    "task_label": name,
-                    "special_run_type": "fsm_ts_search",
-                    "linked": linked
-                }))
-
-        super(TransitionStateSearchFW, self).__init__(
             t,
             parents=parents,
             name=name,

@@ -63,7 +63,7 @@ class WriteInputFromIOSet(FiretaskBase):
     ]
 
     def run_task(self, fw_spec):
-        input_file = os.path.join(self.get("write_to_dir", ""),self.get("input_file", "mol.qin"))
+        input_file = os.path.join(self.get("write_to_dir", ""), self.get("input_file", "mol.qin"))
         # these if statements might need to be reordered at some point
         # if a full QChemDictSet object was provided
         if hasattr(self["qchem_input_set"], "write_file"):
