@@ -64,7 +64,7 @@ class QChemDrone(AbstractDrone):
         self.runs = ["orig"] + self.runs
         self.additional_fields = additional_fields or {}
 
-    def assimilate(self, path, input_file, output_file, multirun):
+    def assimilate(self, path, input_file, output_file, multirun, extra_files=None):
         """
         Parses qchem input and output files and insert the result into the db.
 
@@ -74,6 +74,9 @@ class QChemDrone(AbstractDrone):
             output_file (str): base name of the output file(s)
             multirun (bool): Whether the job to parse includes multiple
                              calculations in one input / output pair.
+            extra_files (list): list of filenames which, in addition to the input and output
+                                     files, must be present. This is most relevant for string
+                                     methods (ex: FSM), where multiple outputs are generated.
 
         Returns:
             d (dict): a task dictionary
@@ -87,7 +90,15 @@ class QChemDrone(AbstractDrone):
                     raise AssertionError("Can only have inequal number of input and output files when there is a saved copy of the original input!")
             else:
                 raise AssertionError("Inequal number of input and output files!")
+        # Check that all needed files are present in the path
+        if extra_files is not None:
+            in_path = os.listdir(path)
+            for filename in extra_files:
+                if filename not in in_path:
+                    raise ValueError("Additional file {} not found!".format(filename))
         if len(qcinput_files) > 0 and len(qcoutput_files) > 0:
+            # Note: at least for FSM, QCOutput will automatically handle all additional output
+            # files, so generate_doc is not passed the extra_files argument
             d = self.generate_doc(path, qcinput_files, qcoutput_files,
                                   multirun)
             self.post_process(path, d)
@@ -196,7 +207,7 @@ class QChemDrone(AbstractDrone):
             elif "ESP" in d_calc_final:
                 d["output"]["esp"] = d_calc_final["ESP"][-1]
 
-            if d["output"]["job_type"] == "opt" or d["output"]["job_type"] == "optimization":
+            if d["output"]["job_type"] in ["opt", "optimization", "ts"]:
                 if "molecule_from_optimized_geometry" in d_calc_final:
                     d["output"]["optimized_molecule"] = d_calc_final[
                         "molecule_from_optimized_geometry"]
@@ -208,7 +219,7 @@ class QChemDrone(AbstractDrone):
                         d_calc_final["opt_constraint"][0],
                         float(d_calc_final["opt_constraint"][6])
                     ]
-            if d["output"]["job_type"] == "freq" or d["output"]["job_type"] == "frequency":
+            if d["output"]["job_type"] in ["freq", "frequency"]:
                 d["output"]["frequencies"] = d_calc_final["frequencies"]
                 d["output"]["enthalpy"] = d_calc_final["total_enthalpy"]
                 d["output"]["entropy"] = d_calc_final["total_entropy"]
@@ -217,6 +228,23 @@ class QChemDrone(AbstractDrone):
                         "initial_molecule"]
                     d["output"]["final_energy"] = d["calcs_reversed"][1][
                         "final_energy"]
+
+            if d["output"]["job_type"] == "fsm":
+                d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
+                d["input"]["initial_product_molecules"] = d_calc_final["string_initial_product_molecules"]
+                d["input"]["initial_reactant_geometry"] = d_calc_final["string_initial_reactant_geometry"]
+                d["input"]["initial_product_geometry"] = d_calc_final["string_initial_product_geometry"]
+
+                d["output"]["num_images"] = d_calc_final["string_num_images"]
+                d["output"]["string_energies"] = d_calc_final["string_energies"]
+                d["output"]["string_relative_energies"] = d_calc_final["string_relative_energies"]
+                d["output"]["string_geometries"] = d_calc_final["string_geometries"]
+                d["output"]["string_molecules"] = d_calc_final["string_molecules"]
+                d["output"]["string_absolute_distances"] = d_calc_final["string_absolute_distances"]
+                d["output"]["string_proportional_distances"] = d_calc_final["string_proportional_distances"]
+                d["output"]["string_gradient_magnitudes"] = d_calc_final["string_gradient_magnitudes"]
+                d["output"]["max_energy"] = d_calc_final["string_max_energy"]
+                d["output"]["ts_guess"] = d_calc_final["string_ts_guess"]
 
             if "final_energy" not in d["output"]:
                 if d_calc_final["final_energy"] != None:
@@ -263,7 +291,7 @@ class QChemDrone(AbstractDrone):
                 if d["special_run_type"] == "frequency_flattener":
                     opt_traj = []
                     for entry in d["calcs_reversed"]:
-                        if entry["input"]["rem"]["job_type"] == "opt" or entry["input"]["rem"]["job_type"] == "optimization":
+                        if entry["input"]["rem"]["job_type"] in ["opt", "optimization", "ts"]:
                             doc = {"initial": {}, "final": {}}
                             doc["initial"]["molecule"] = entry["initial_molecule"]
                             doc["final"]["molecule"] = entry["molecule_from_last_geometry"]

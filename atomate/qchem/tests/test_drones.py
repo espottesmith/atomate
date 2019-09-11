@@ -319,6 +319,13 @@ class QChemDroneTest(unittest.TestCase):
         self.assertIn("dir_name", doc)
         self.assertEqual(len(doc["calcs_reversed"]), 1)
 
+    #TODO
+    def test_assimilate_fsm(self):
+        pass
+
+    def test_assimilate_ts(self):
+        pass
+
     def test_FF_switching(self):
         drone = QChemDrone(additional_fields={"special_run_type": "frequency_flattener"})
         doc = drone.assimilate(

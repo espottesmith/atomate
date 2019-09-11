@@ -48,7 +48,8 @@ class QChemToDb(FiretaskBase):
     """
     optional_params = [
         "calc_dir", "calc_loc", "input_file", "output_file",
-        "additional_fields", "db_file", "fw_spec_field", "multirun"
+        "additional_fields", "db_file", "fw_spec_field", "multirun",
+        "extra_files"
     ]
 
     def run_task(self, fw_spec):
@@ -75,7 +76,8 @@ class QChemToDb(FiretaskBase):
             path=calc_dir,
             input_file=input_file,
             output_file=output_file,
-            multirun=multirun)
+            multirun=multirun,
+            extra_files=self.get("extra_files", None))
 
         if "tags" in fw_spec:
             task_doc.update({"tags": fw_spec["tags"]})
@@ -93,6 +95,18 @@ class QChemToDb(FiretaskBase):
                 update_spec["prev_calc_resp"] = task_doc["output"]["RESP"]
             elif "ESP" in task_doc["output"]:
                 update_spec["prev_calc_esp"] = task_doc["output"]["ESP"]
+        if "task_label" in additional_fields:
+            if "ts_search" in additional_fields["task_label"]:
+                tmp = dict()
+                tmp["molecule"] = task_doc["output"]["ts_guess"]
+                tmp["mulliken"] = task_doc["output"]["mulliken"]
+                tmp["energy"] = task_doc["output"]["max_energy"]
+                tmp["calc_dir"] = calc_dir
+                tmp["linked"] = task_doc["linked"]
+                tmp["orig"] = task_doc["orig"]
+                update_spec["ts_search"] = tmp
+                update_spec["prev_calc_molecule"] = task_doc["output"]["ts_guess"]
+                update_spec["prev_calc_mulliken"] = task_doc["output"]["mulliken"]
 
         # get the database connection
         db_file = env_chk(self.get("db_file"), fw_spec)
