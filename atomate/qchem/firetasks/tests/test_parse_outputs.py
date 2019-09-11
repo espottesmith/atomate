@@ -33,22 +33,6 @@ class TestParseOutputQChem(AtomateTest):
     def tearDown(self):
         pass
 
-    def test_parse_ion_placing_FF(self):
-        with patch("atomate.qchem.firetasks.parse_outputs.FWAction"
-                   ) as FWAction_patch:
-            ft = QChemToDb(
-                    calc_dir=os.path.join(module_dir, "..", "..", "test_files", "ion_placer_files", "launcher0"),
-                    db_file=os.path.join(db_dir, "db.json"),
-                    input_file="mol.qin",
-                    output_file="mol.qout",
-                    additional_fields={
-                        "task_label": "ion_pos_0",
-                        "special_run_type": "frequency_flattener",
-                        "linked": False
-                    })
-            ft.run_task({})
-            self.assertEqual(FWAction_patch.call_args[1]["update_spec"]["ion_pos_0"]["energy"],-349.91898078154)
-
     #TODO:
     def test_parse_ts_search(self):
         pass

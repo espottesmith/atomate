@@ -326,6 +326,9 @@ class QChemDroneTest(unittest.TestCase):
     def test_assimilate_ts(self):
         pass
 
+    def test_FF_ts(self):
+        pass
+
     def test_FF_switching(self):
         drone = QChemDrone(additional_fields={"special_run_type": "frequency_flattener"})
         doc = drone.assimilate(

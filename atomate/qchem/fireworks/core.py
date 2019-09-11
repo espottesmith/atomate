@@ -4,6 +4,9 @@
 # sequences of QChem calculations.
 
 from pymatgen.core.structure import Molecule
+from pymatgen.analysis.graphs import MoleculeGraph
+from pymatgen.analysis.local_env import OpenBabelNN
+# from pymatgen.analysis.fragmenter import metal_edge_extender
 from pymatgen.io.qchem.utils import map_atoms_reaction
 
 from fireworks import Firework
@@ -369,9 +372,15 @@ class FreezingStringFW(Firework):
         output_file = "mol.qout"
 
         if map_atoms:
+            rct_mgs = [MoleculeGraph.with_local_env_strategy(r, OpenBabelNN(),
+                                                             extend_structure=False, reorder=False)
+                       for r in reactants]
+            pro_mgs = [MoleculeGraph.with_local_env_strategy(p, OpenBabelNN(),
+                                                             extend_structure=False, reorder=False)
+                       for p in products]
             # Need to think about how to make this a FireTask
             if len(products) == 1:
-                mapping = map_atoms_reaction(reactants, products[0])
+                mapping = map_atoms_reaction(rct_mgs, pro_mgs[0])
                 species = [None for i in range(len(products[0]))]
                 coords = [None for i in range(len(products[0]))]
                 for e, site in enumerate(products[0]):
@@ -379,9 +388,9 @@ class FreezingStringFW(Firework):
                     coords[mapping[e]] = site.coords
                 product = Molecule(species, coords, charge=products[0].charge,
                                    spin_multiplicity=products[0].spin_multiplicity)
-                molecule = {"reactants": reactants, "products": product}
+                molecule = {"reactants": reactants, "products": [product]}
             elif len(reactants) == 1:
-                mapping = map_atoms_reaction(products, reactants[0])
+                mapping = map_atoms_reaction(pro_mgs, rct_mgs[0])
                 species = list()
                 coords = list()
                 for e, site in enumerate(reactants[0]):
@@ -389,7 +398,7 @@ class FreezingStringFW(Firework):
                     coords[mapping[e]] = site.coords
                 reactant = Molecule(species, coords, charge=reactants[0].charge,
                                     spin_multiplicity=reactants[0].spin_multiplicity)
-                molecule = {"reactants": reactant, "products": products}
+                molecule = {"reactants": [reactant], "products": products}
             else:
                 raise ValueError("Cannot map atoms with more than one product and more than one "
                                  "reactant.")
@@ -400,7 +409,7 @@ class FreezingStringFW(Firework):
         t.append(
             WriteInputFromIOSet(
                 molecule=molecule,
-                qchem_input_set="FreqSet",
+                qchem_input_set="FreezingStringSet",
                 input_file=input_file,
                 qchem_input_params=qchem_input_params))
         t.append(
@@ -418,7 +427,7 @@ class FreezingStringFW(Firework):
                 output_file=output_file,
                 additional_fields={"task_label": name},
                 extra_files=["Vfile.txt", "stringfile.txt", "perp_grad_file.txt"]))
-        super(FrequencyFW, self).__init__(
+        super(FreezingStringFW, self).__init__(
             t,
             parents=parents,
             name=name,
@@ -606,6 +615,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
             parents=parents,
             name=name,
             **kwargs)
+
 
 class FragmentFW(Firework):
     def __init__(self,
