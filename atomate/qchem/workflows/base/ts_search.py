@@ -108,4 +108,3 @@ def get_wf_ts_search(reactants,
     wfname = "{}:{}".format(str(reaction), name)
 
     return Workflow(fws, name=wfname, **kwargs)
-x
