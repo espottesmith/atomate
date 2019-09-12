@@ -319,10 +319,49 @@ class QChemDroneTest(unittest.TestCase):
         self.assertIn("dir_name", doc)
         self.assertEqual(len(doc["calcs_reversed"]), 1)
 
-    #TODO
     def test_assimilate_fsm(self):
-        pass
+        drone = QChemDrone(runs=["fsm"])
+        doc = drone.assimilate(
+            path=os.path.join(module_dir, "..", "test_files", "basic_fsm"),
+            input_file="fsm.qin",
+            output_file="fsm.qout",
+            multirun=False,
+            extra_files=["Vfile.txt", "stringfile.txt", "perp_grad_file.txt"])
 
+        # Basic keys
+        self.assertEqual(doc["input"]["job_type"], "fsm")
+        self.assertEqual(doc["output"]["job_type"], "fsm")
+        self.assertEqual(doc["output"]["final_energy"], -1029.9214423347)
+        self.assertEqual(doc["walltime"], 42676.16)
+        self.assertEqual(doc["cputime"], 726211.21)
+        self.assertEqual(doc["smiles"], "C1(c2occc2)OCCO1.C(=O)(C#CC(=O)OC)OC")
+        self.assertEqual(doc["formula_pretty"], "H14C13O7")
+        self.assertEqual(doc["formula_anonymous"], "A7B13C14")
+        self.assertEqual(doc["chemsys"], "C-H-O")
+        self.assertEqual(doc["pointgroup"], "C1")
+        self.assertIn("calcs_reversed", doc)
+        self.assertIn("initial_molecule", doc["input"])
+        self.assertIn("initial_molecule", doc["output"])
+        self.assertIn("last_updated", doc)
+        self.assertIn("dir_name", doc)
+        self.assertEqual(len(doc["calcs_reversed"]), 1)
+
+        # FSM-specific inputs and outputs
+        self.assertIn("ts_guess", doc["output"])
+        self.assertIn("initial_reactant_molecule", doc["input"])
+        self.assertIn("initial_product_molecule", doc["input"])
+        self.assertIn("initial_reactant_geometry", doc["input"])
+        self.assertIn("initial_product_geometry", doc["input"])
+        self.assertEqual(doc["output"]["num_images"], 29)
+        self.assertEqual(doc["output"]["max_energy"], -1029.92152)
+        image_properties = ["string_energies", "string_relative_energies", "string_geometries",
+                            "string_molecules", "string_absolute_distances",
+                            "string_proportional_distances",
+                            "string_gradient_magnitudes"]
+        for prop in image_properties:
+            self.assertEqual(len(doc["output"][prop]), 29)
+
+    #TODO
     def test_assimilate_ts(self):
         pass
 

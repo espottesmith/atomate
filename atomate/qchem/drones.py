@@ -231,7 +231,7 @@ class QChemDrone(AbstractDrone):
 
             if d["output"]["job_type"] == "fsm":
                 d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
-                d["input"]["initial_product_molecules"] = d_calc_final["string_initial_product_molecules"]
+                d["input"]["initial_product_molecule"] = d_calc_final["string_initial_product_molecules"]
                 d["input"]["initial_reactant_geometry"] = d_calc_final["string_initial_reactant_geometry"]
                 d["input"]["initial_product_geometry"] = d_calc_final["string_initial_product_geometry"]
 
