@@ -381,8 +381,9 @@ class FreezingStringFW(Firework):
             # Need to think about how to make this a FireTask
             if len(products) == 1:
                 mapping = map_atoms_reaction(rct_mgs, pro_mgs[0])
-                species = [None for i in range(len(products[0]))]
-                coords = [None for i in range(len(products[0]))]
+                # print(mapping)
+                species = [None for _ in range(len(products[0]))]
+                coords = [None for _ in range(len(products[0]))]
                 for e, site in enumerate(products[0]):
                     species[mapping[e]] = site.species
                     coords[mapping[e]] = site.coords
@@ -391,8 +392,9 @@ class FreezingStringFW(Firework):
                 molecule = {"reactants": reactants, "products": [product]}
             elif len(reactants) == 1:
                 mapping = map_atoms_reaction(pro_mgs, rct_mgs[0])
-                species = list()
-                coords = list()
+                # print(mapping)
+                species = [None for _ in range(len(reactants[0]))]
+                coords = [None for _ in range(len(reactants[0]))]
                 for e, site in enumerate(reactants[0]):
                     species[mapping[e]] = site.species
                     coords[mapping[e]] = site.coords
