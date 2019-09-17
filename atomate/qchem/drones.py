@@ -158,7 +158,7 @@ class QChemDrone(AbstractDrone):
                 d["orig"] = {}
                 if isinstance(orig_input.molecule, dict):
                     mol_dict = dict()
-                    for key, molecules in orig_input.molecule:
+                    for key, molecules in orig_input.molecule.items():
                         mol_dict[key] = list()
                         for molecule in molecules:
                             mol_dict[key].append(molecule.as_dict())
