@@ -14,6 +14,7 @@ from atomate.qchem.fireworks.core import (
     SinglePointFW,
     TransitionStateFW,
     FreezingStringFW,
+    GrowingStringFW,
     FrequencyFlatteningOptimizeFW,
     FrequencyFlatteningTransitionStateFW,
     FragmentFW)
@@ -371,6 +372,78 @@ class TestCore(AtomateTest):
                          ).as_dict())
         self.assertEqual(firework.parents, [])
         self.assertEqual(firework.name, "special freezing string method calculation")
+
+    def test_GrowingStringFW_defaults(self):
+        self.maxDiff = None
+        firework = GrowingStringFW([self.act_mol], [self.act_mol])
+        self.assertEqual(firework.tasks[0].as_dict(),
+                         WriteInputFromIOSet(
+                             molecule={"reactants": [self.act_mol],
+                                       "products": [self.act_mol]},
+                             qchem_input_set="GrowingStringSet",
+                             input_file="mol.qin",
+                             qchem_input_params={}).as_dict())
+        self.assertEqual(firework.tasks[1].as_dict(),
+                         RunQChemCustodian(
+                             qchem_cmd=">>qchem_cmd<<",
+                             multimode=">>multimode<<",
+                             input_file="mol.qin",
+                             output_file="mol.qout",
+                             max_cores=">>max_cores<<",
+                             job_type="normal").as_dict())
+        self.assertEqual(firework.tasks[2].as_dict(),
+                         QChemToDb(
+                             db_file=None,
+                             input_file="mol.qin",
+                             output_file="mol.qout",
+                             additional_fields={
+                                 "task_label": "growing string method calculation"
+                             },
+                            extra_files=["Vfile.txt", "perp_grad_file.txt"]
+                         ).as_dict())
+        self.assertEqual(firework.parents, [])
+        self.assertEqual(firework.name, "growing string method calculation")
+
+    def test_GrowingStringFW_not_defaults(self):
+        firework = GrowingStringFW(
+            reactants=[self.act_mol],
+            products=[self.act_mol],
+            name="special growing string method calculation",
+            qchem_cmd="qchem -slurm",
+            multimode="mpi",
+            max_cores=12,
+            qchem_input_params={"pcm_dielectric": 10.0},
+            db_file=os.path.join(db_dir, "db.json"),
+            parents=None)
+        self.assertEqual(firework.tasks[0].as_dict(),
+                         WriteInputFromIOSet(
+                             molecule={"reactants": [self.act_mol],
+                                       "products": [self.act_mol]},
+                             qchem_input_set="GrowingStringSet",
+                             input_file="mol.qin",
+                             qchem_input_params={
+                                 "pcm_dielectric": 10.0
+                             }).as_dict())
+        self.assertEqual(firework.tasks[1].as_dict(),
+                         RunQChemCustodian(
+                             qchem_cmd="qchem -slurm",
+                             multimode="mpi",
+                             input_file="mol.qin",
+                             output_file="mol.qout",
+                             max_cores=12,
+                             job_type="normal").as_dict())
+        self.assertEqual(firework.tasks[2].as_dict(),
+                         QChemToDb(
+                             db_file=os.path.join(db_dir, "db.json"),
+                             input_file="mol.qin",
+                             output_file="mol.qout",
+                             additional_fields={
+                                 "task_label": "special growing string method calculation"
+                             },
+                            extra_files=["Vfile.txt", "perp_grad_file.txt"]
+                         ).as_dict())
+        self.assertEqual(firework.parents, [])
+        self.assertEqual(firework.name, "special growing string method calculation")
 
     def test_FrequencyFlatteningOptimizeFW_defaults(self):
         firework = FrequencyFlatteningOptimizeFW(molecule=self.act_mol)

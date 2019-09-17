@@ -10,7 +10,9 @@ from __future__ import absolute_import, division, print_function, \
 from pymatgen.analysis.reaction_calculator import Reaction
 
 from fireworks import Workflow
-from atomate.qchem.fireworks.core import FrequencyFlatteningTransitionStateFW, FreezingStringFW
+from atomate.qchem.fireworks.core import (FrequencyFlatteningTransitionStateFW,
+                                          FreezingStringFW,
+                                          GrowingStringFW)
 from atomate.utils.utils import get_logger
 
 __author__ = "Evan Spotte-Smith"
@@ -32,6 +34,7 @@ def get_wf_ts_search(reactants,
                      multimode=">>multimode<<",
                      qchem_input_params=None,
                      linked=False,
+                     method="fsm",
                      name="ts_search",
                      db_file=">>db_file<<",
                      **kwargs):
@@ -75,6 +78,9 @@ def get_wf_ts_search(reactants,
                                    as seen in the test_double_FF_opt workflow test.
         linked (bool): if True (default False), pass scratch files from calculation to calculation
             and have outputs from one calculation inform the next.
+        method (string): Determines what string method to use for the initial transition state guess.
+            Default is "fsm", which will use the Freezing-String Method. "gsm" (for Growing-String
+            Method) is also a valid option.
         name (string): name for the Workflow
         db_file (str): path to file containing the database credentials.
         kwargs (keyword arguments): additional kwargs to be passed to Workflow
@@ -83,16 +89,27 @@ def get_wf_ts_search(reactants,
         Workflow
     """
 
-    # Guess the transition state structure using FSM
-    fw1 = FreezingStringFW(
-        reactants=reactants,
-        products=products,
-        name="ts_search_fsm",
-        qchem_cmd=qchem_cmd,
-        max_cores=max_cores,
-        multimode=multimode,
-        qchem_input_params=qchem_input_params,
-        db_file=db_file)
+    # Guess the transition state structure
+    if method.lower() == "fsm":
+        fw1 = FreezingStringFW(
+            reactants=reactants,
+            products=products,
+            name="ts_search_fsm",
+            qchem_cmd=qchem_cmd,
+            max_cores=max_cores,
+            multimode=multimode,
+            qchem_input_params=qchem_input_params,
+            db_file=db_file)
+    elif method.lower() == "gsm":
+        fw1 = GrowingStringFW(
+            reactants=reactants,
+            products=products,
+            name="ts_search_gsm",
+            qchem_cmd=qchem_cmd,
+            max_cores=max_cores,
+            multimode=multimode,
+            qchem_input_params=qchem_input_params,
+            db_file=db_file)
 
     fw2 = FrequencyFlatteningTransitionStateFW(
         name="ts_search_ff_ts",
