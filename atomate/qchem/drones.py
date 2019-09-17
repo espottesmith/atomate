@@ -163,9 +163,11 @@ class QChemDrone(AbstractDrone):
                         for molecule in molecules:
                             mol_dict[key].append(molecule.as_dict())
                     d["orig"]["molecule"] = mol_dict
+                    sum_charge = sum([e.charge for e in orig_input.molecule.get("products")])
+                    d["orig"]["molecule"]["charge"] = sum_charge
                 else:
                     d["orig"]["molecule"] = orig_input.molecule.as_dict()
-                d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
+                    d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
                 d["orig"]["rem"] = orig_input.rem
                 d["orig"]["opt"] = orig_input.opt
                 d["orig"]["pcm"] = orig_input.pcm
