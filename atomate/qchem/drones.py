@@ -156,7 +156,15 @@ class QChemDrone(AbstractDrone):
             if len(qcinput_files) > len(qcoutput_files):
                 orig_input = QCInput.from_file(os.path.join(dir_name, qcinput_files.pop("orig")))
                 d["orig"] = {}
-                d["orig"]["molecule"] = orig_input.molecule.as_dict()
+                if isinstance(orig_input.molecule, dict):
+                    mol_dict = dict()
+                    for key, molecules in orig_input.molecule:
+                        mol_dict[key] = list()
+                        for molecule in molecules:
+                            mol_dict[key].append(molecule.as_dict())
+                    d["orig"]["molecule"] = mol_dict
+                else:
+                    d["orig"]["molecule"] = orig_input.molecule.as_dict()
                 d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
                 d["orig"]["rem"] = orig_input.rem
                 d["orig"]["opt"] = orig_input.opt
@@ -229,22 +237,29 @@ class QChemDrone(AbstractDrone):
                     d["output"]["final_energy"] = d["calcs_reversed"][1][
                         "final_energy"]
 
-            if d["output"]["job_type"] == "fsm":
+            if d["output"]["job_type"] in ["fsm", "gsm"]:
                 d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
                 d["input"]["initial_product_molecule"] = d_calc_final["string_initial_product_molecules"]
                 d["input"]["initial_reactant_geometry"] = d_calc_final["string_initial_reactant_geometry"]
                 d["input"]["initial_product_geometry"] = d_calc_final["string_initial_product_geometry"]
-
                 d["output"]["num_images"] = d_calc_final["string_num_images"]
-                d["output"]["string_energies"] = d_calc_final["string_energies"]
                 d["output"]["string_relative_energies"] = d_calc_final["string_relative_energies"]
                 d["output"]["string_geometries"] = d_calc_final["string_geometries"]
                 d["output"]["string_molecules"] = d_calc_final["string_molecules"]
-                d["output"]["string_absolute_distances"] = d_calc_final["string_absolute_distances"]
-                d["output"]["string_proportional_distances"] = d_calc_final["string_proportional_distances"]
                 d["output"]["string_gradient_magnitudes"] = d_calc_final["string_gradient_magnitudes"]
-                d["output"]["max_energy"] = d_calc_final["string_max_energy"]
                 d["output"]["ts_guess"] = d_calc_final["string_ts_guess"]
+
+                if d["output"]["job_type"] == "fsm":
+                    d["output"]["string_energies"] = d_calc_final["string_energies"]
+                    d["output"]["string_absolute_distances"] = d_calc_final["string_absolute_distances"]
+                    d["output"]["string_proportional_distances"] = d_calc_final["string_proportional_distances"]
+                    d["output"]["max_energy"] = d_calc_final["string_max_energy"]
+                else:
+                    d["output"]["string_relative_energies_iterations"] = d_calc_final["string_relative_energies_iterations"]
+                    d["output"]["string_gradient_magnitudes_iterations"] = d_calc_final["string_gradient_magnitudes_iterations"]
+                    d["output"]["string_total_gradient_magnitude"] = d_calc_final["string_total_gradient_magnitude"]
+                    d["output"]["string_total_gradient_magnitude_iterations"] = d_calc_final["string_total_gradient_magnitude_iterations"]
+                    d["output"]["string_max_relative_energy"] = d_calc_final["string_max_relative_energy"]
 
             if "final_energy" not in d["output"]:
                 if d_calc_final["final_energy"] != None:
