@@ -423,7 +423,8 @@ class FreezingStringFW(Firework):
                 input_file=input_file,
                 output_file=output_file,
                 max_cores=max_cores,
-                job_type="normal"))
+                job_type="normal",
+                gzipped_output=False))
         t.append(
             QChemToDb(
                 db_file=db_file,
@@ -540,7 +541,8 @@ class GrowingStringFW(Firework):
                 input_file=input_file,
                 output_file=output_file,
                 max_cores=max_cores,
-                job_type="normal"))
+                job_type="normal",
+                gzipped_output=False))
         t.append(
             QChemToDb(
                 db_file=db_file,
