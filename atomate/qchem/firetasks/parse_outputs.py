@@ -102,7 +102,6 @@ class QChemToDb(FiretaskBase):
                 tmp["mulliken"] = task_doc["output"]["mulliken"]
                 tmp["energy"] = task_doc["output"]["max_energy"]
                 tmp["calc_dir"] = calc_dir
-                tmp["linked"] = task_doc["linked"]
                 tmp["orig"] = task_doc["orig"]
                 update_spec["ts_search"] = tmp
                 update_spec["prev_calc_molecule"] = task_doc["output"]["ts_guess"]
