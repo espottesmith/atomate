@@ -3,6 +3,8 @@
 # Defines standardized Fireworks that can be chained easily to perform various
 # sequences of QChem calculations.
 
+from itertools import chain
+
 from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN
@@ -702,6 +704,8 @@ class FrequencyFlatteningTransitionStateFW(Firework):
         qchem_input_params = qchem_input_params or {}
         input_file = "mol.qin"
         output_file = "mol.qout"
+        runs = list(chain.from_iterable([["ts_" + str(ii), "freq_" + str(ii)]
+                                         for ii in range(10)]))
 
         t = list()
         t.append(
@@ -727,6 +731,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                 db_file=db_file,
                 input_file=input_file,
                 output_file=output_file,
+                runs=runs,
                 additional_fields={
                     "task_label": name,
                     "special_run_type": "ts_frequency_flattener",

@@ -49,7 +49,7 @@ class QChemToDb(FiretaskBase):
     optional_params = [
         "calc_dir", "calc_loc", "input_file", "output_file",
         "additional_fields", "db_file", "fw_spec_field", "multirun",
-        "extra_files"
+        "extra_files", "runs"
     ]
 
     def run_task(self, fw_spec):
@@ -64,12 +64,15 @@ class QChemToDb(FiretaskBase):
         output_file = self.get("output_file", "mol.qout")
         multirun = self.get("multirun", False)
 
+        runs = self.get("runs", None)
+        extra_files = self.get("extra_files", None)
+
         # parse the QChem directory
         logger.info("PARSING DIRECTORY: {}".format(calc_dir))
 
         additional_fields = self.get("additional_fields", [])
 
-        drone = QChemDrone(additional_fields=additional_fields)
+        drone = QChemDrone(runs=runs, additional_fields=additional_fields)
 
         # assimilate (i.e., parse)
         task_doc = drone.assimilate(
@@ -77,7 +80,7 @@ class QChemToDb(FiretaskBase):
             input_file=input_file,
             output_file=output_file,
             multirun=multirun,
-            extra_files=self.get("extra_files", None))
+            extra_files=extra_files)
 
         if "tags" in fw_spec:
             task_doc.update({"tags": fw_spec["tags"]})
