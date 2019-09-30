@@ -1,0 +1,680 @@
+{
+    "spec": {
+        "_tasks": [
+            {
+                "molecule": {
+                    "reactants": [
+                        {
+                            "@module": "pymatgen.core.structure",
+                            "@class": "Molecule",
+                            "charge": 0,
+                            "spin_multiplicity": 1,
+                            "sites": [
+                                {
+                                    "name": "O",
+                                    "species": [
+                                        {
+                                            "element": "O",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.0,
+                                        0.0,
+                                        1.1538497007
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.0884476041,
+                                        0.0,
+                                        0.3474338385
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.0884476041,
+                                        0.0,
+                                        0.3474338385
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -0.716740116,
+                                        0.0,
+                                        -0.9572092479
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.716740116,
+                                        0.0,
+                                        -0.9572092479
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -2.0431194531,
+                                        0.0,
+                                        0.8497190526
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        2.0431194531,
+                                        0.0,
+                                        0.8497190526
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.3734804501,
+                                        0.0,
+                                        -1.8148806496
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.3734804501,
+                                        0.0,
+                                        -1.8148806496
+                                    ],
+                                    "properties": {}
+                                }
+                            ]
+                        },
+                        {
+                            "@module": "pymatgen.core.structure",
+                            "@class": "Molecule",
+                            "charge": 0,
+                            "spin_multiplicity": 1,
+                            "sites": [
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.1537517078,
+                                        0.1651559495,
+                                        -0.0004565788
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "N",
+                                    "species": [
+                                        {
+                                            "element": "N",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.5314e-06,
+                                        0.9449430654,
+                                        -0.0030653457
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.6659243007,
+                                        -1.2577301708,
+                                        0.0001700487
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "O",
+                                    "species": [
+                                        {
+                                            "element": "O",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        2.2903086848,
+                                        0.5675346801,
+                                        -0.0007179381
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.1537507145,
+                                        0.1651517317,
+                                        -0.0004566831
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -0.6659173397,
+                                        -1.2577328312,
+                                        0.0001700267
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "O",
+                                    "species": [
+                                        {
+                                            "element": "O",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -2.2903101822,
+                                        0.5675243826,
+                                        -0.0007179228
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -2.9721e-06,
+                                        1.9538065756,
+                                        -0.0018413625
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.349406124,
+                                        -2.0961265895,
+                                        0.0005229577
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.3493957608,
+                                        -2.0961320564,
+                                        0.000522881
+                                    ],
+                                    "properties": {}
+                                }
+                            ]
+                        }
+                    ],
+                    "products": [
+                        {
+                            "@module": "pymatgen.core.structure",
+                            "@class": "Molecule",
+                            "charge": 0,
+                            "spin_multiplicity": 1,
+                            "sites": [
+                                {
+                                    "name": "O",
+                                    "species": [
+                                        {
+                                            "element": "O",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.947957827,
+                                        0.0002001221,
+                                        -1.2862070597
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.1654514144,
+                                        1.0638666809,
+                                        -0.3642503655
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.1651221037,
+                                        -1.0640385729,
+                                        -0.3648507682
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        2.4804055128,
+                                        0.6653534066,
+                                        0.2884399855
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        2.4801954153,
+                                        -0.6662967635,
+                                        0.288075361
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.0977218374,
+                                        2.0324358223,
+                                        -0.8562105233
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        1.0971136057,
+                                        -2.0323193955,
+                                        -0.8573398946
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        3.1940513154,
+                                        1.3470519857,
+                                        0.7328985074
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        3.1936399211,
+                                        -1.3484637349,
+                                        0.7321398845
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.3259426414,
+                                        1.16966232,
+                                        0.1499475393
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "N",
+                                    "species": [
+                                        {
+                                            "element": "N",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -2.032055681,
+                                        0.0003479012,
+                                        -0.0947194067
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.041551693,
+                                        0.7712256316,
+                                        0.6868700692
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "O",
+                                    "species": [
+                                        {
+                                            "element": "O",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.7352971237,
+                                        2.2874351433,
+                                        -0.0482862834
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.3263171103,
+                                        -1.1693341021,
+                                        0.1492703311
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "C",
+                                    "species": [
+                                        {
+                                            "element": "C",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.041304332,
+                                        -0.7716464053,
+                                        0.6864292028
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "O",
+                                    "species": [
+                                        {
+                                            "element": "O",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -1.7360362803,
+                                        -2.2868616135,
+                                        -0.0495918074
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        -2.9511444167,
+                                        0.000616787,
+                                        -0.5172062183
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.2199564813,
+                                        1.2521014449,
+                                        1.6498455446
+                                    ],
+                                    "properties": {}
+                                },
+                                {
+                                    "name": "H",
+                                    "species": [
+                                        {
+                                            "element": "H",
+                                            "occu": 1
+                                        }
+                                    ],
+                                    "xyz": [
+                                        0.2195489412,
+                                        -1.2531272149,
+                                        1.6491307411
+                                    ],
+                                    "properties": {}
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "qchem_input_set": "FreezingStringSet",
+                "input_file": "mol.qin",
+                "qchem_input_params": {
+                    "dft_rung": 3,
+                    "basis_set": "6-31g*",
+                    "overwrite_inputs": {
+                        "rem": {
+                            "xc_grid": 3
+                        }
+                    }
+                },
+                "_fw_name": "{{atomate.qchem.firetasks.write_inputs.WriteInputFromIOSet}}"
+            },
+            {
+                "qchem_cmd": "qchem",
+                "multimode": "openmp",
+                "input_file": "mol.qin",
+                "output_file": "mol.qout",
+                "max_cores": 32,
+                "job_type": "normal",
+                "gzipped_output": false,
+                "_fw_name": "{{atomate.qchem.firetasks.run_calc.RunQChemCustodian}}"
+            },
+            {
+                "db_file": "/global/homes/e/ewcss/cori/config/db.json",
+                "input_file": "mol.qin",
+                "output_file": "mol.qout",
+                "additional_fields": {
+                    "task_label": "ts_search_fsm"
+                },
+                "extra_files": [
+                    "Vfile.txt",
+                    "stringfile.txt",
+                    "perp_grad_file.txt"
+                ],
+                "_fw_name": "{{atomate.qchem.firetasks.parse_outputs.QChemToDb}}"
+            }
+        ]
+    },
+    "fw_id": 2039,
+    "created_on": "2019-09-27T14:06:37.731780",
+    "updated_on": "2019-09-27T22:37:45.004312",
+    "launches": [
+        {
+            "fworker": {
+                "name": "cori_qchem_dev",
+                "category": "",
+                "query": "{}",
+                "env": {
+                    "db_file": "/global/homes/e/ewcss/cori/config/db.json",
+                    "qchem_cmd": "qchem",
+                    "max_cores": 32,
+                    "multimode": "openmp",
+                    "scratch_dir": "/dev/shm/qcscratch/"
+                }
+            },
+            "fw_id": 2039,
+            "launch_dir": "/global/cscratch1/sd/ewcss/jcesr/tests/20190927_tests_gsm_fsm/block_2019-09-27-14-09-56-554879/launcher_2019-09-27-14-10-09-433793",
+            "host": "nid12990",
+            "ip": "10.128.51.37",
+            "trackers": [],
+            "action": null,
+            "state": "RUNNING",
+            "state_history": [
+                {
+                    "state": "RUNNING",
+                    "created_on": "2019-09-27T22:37:44.977377",
+                    "updated_on": "2019-09-27T22:37:44.977381"
+                }
+            ],
+            "launch_id": 1450
+        }
+    ],
+    "state": "RUNNING",
+    "name": "ts_search_fsm"
+}

@@ -1,0 +1,19 @@
+echo test successful
+2019-09-27 15:37:26,834 INFO Hostname/IP lookup (this will take a few seconds)
+2019-09-27 15:37:26,861 INFO Launching Rocket
+2019-09-27 15:37:44,967 DEBUG FW with id: 2039 is unique!
+2019-09-27 15:37:45,004 DEBUG Created/updated Launch with launch_id: 1450
+2019-09-27 15:37:45,026 DEBUG RUNNING FW with id: 2039
+2019-09-27 15:37:45,027 INFO RUNNING fw_id: 2039 in directory: /global/cscratch1/sd/ewcss/jcesr/tests/20190927_tests_gsm_fsm/block_2019-09-27-14-09-56-554879/launcher_2019-09-27-14-10-09-433793
+2019-09-27 15:37:45,047 INFO Task started: {{atomate.qchem.firetasks.write_inputs.WriteInputFromIOSet}}.
+2019-09-27 15:38:01,163 INFO Task completed: {{atomate.qchem.firetasks.write_inputs.WriteInputFromIOSet}} 
+2019-09-27 15:38:01,167 INFO Task started: {{atomate.qchem.firetasks.run_calc.RunQChemCustodian}}.
+2019-09-27 15:56:42,306 INFO Task completed: {{atomate.qchem.firetasks.run_calc.RunQChemCustodian}} 
+2019-09-27 15:56:42,311 INFO Task started: {{atomate.qchem.firetasks.parse_outputs.QChemToDb}}.
+2019-09-27 15:56:42,311 INFO atomate.qchem.firetasks.parse_outputs PARSING DIRECTORY: /global/cscratch1/sd/ewcss/jcesr/tests/20190927_tests_gsm_fsm/block_2019-09-27-14-09-56-554879/launcher_2019-09-27-14-10-09-433793
+2019-09-27 15:56:42,311 INFO atomate.qchem.drones Getting task doc for base dir :/global/cscratch1/sd/ewcss/jcesr/tests/20190927_tests_gsm_fsm/block_2019-09-27-14-09-56-554879/launcher_2019-09-27-14-10-09-433793
+2019-09-27 15:56:43,110 INFO atomate.qchem.drones Post-processing dir:/global/cscratch1/sd/ewcss/jcesr/tests/20190927_tests_gsm_fsm/block_2019-09-27-14-09-56-554879/launcher_2019-09-27-14-10-09-433793
+2019-09-27 15:56:43,167 INFO atomate.utils.database Inserting /global/cscratch1/sd/ewcss/jcesr/tests/20190927_tests_gsm_fsm/block_2019-09-27-14-09-56-554879/launcher_2019-09-27-14-10-09-433793 with taskid = 748
+2019-09-27 15:56:43,269 INFO atomate.qchem.firetasks.parse_outputs Finished parsing with task_id: 748
+2019-09-27 15:56:43,270 INFO Task completed: {{atomate.qchem.firetasks.parse_outputs.QChemToDb}} 
+2019-09-27 15:56:43,369 INFO Rocket finished
