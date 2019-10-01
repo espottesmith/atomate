@@ -56,7 +56,7 @@
                     "freq_9"
                 ],
                 "additional_fields": {
-                    "task_label": "ts_search_ff_ts",
+                    "task_label": "ff_ts_optimization",
                     "special_run_type": "ts_frequency_flattener",
                     "linked": true
                 },
@@ -1319,7 +1319,7 @@
             0.205459
         ]
     },
-    "fw_id": 2038,
+    "fw_id": 1,
     "created_on": "2019-09-27T14:06:37.731894",
     "updated_on": "2019-09-27T23:19:40.011316",
     "launches": [
@@ -1336,7 +1336,7 @@
                     "scratch_dir": "/dev/shm/qcscratch/"
                 }
             },
-            "fw_id": 2038,
+            "fw_id": 1,
             "launch_dir": "/global/cscratch1/sd/ewcss/jcesr/tests/20190925_ts_net/block_2019-09-25-18-44-40-199556/launcher_2019-09-27-14-08-37-923498",
             "host": "nid12990",
             "ip": "10.128.51.37",
@@ -1350,7 +1350,7 @@
                     "updated_on": "2019-09-27T23:19:40.009134"
                 }
             ],
-            "launch_id": 1451
+            "launch_id": 2
         }
     ],
     "state": "RUNNING",

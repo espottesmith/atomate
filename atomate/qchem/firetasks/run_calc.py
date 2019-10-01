@@ -8,6 +8,7 @@ import shutil
 import os
 import subprocess
 
+from pymatgen.core.structure import Molecule
 from pymatgen.io.qchem.inputs import QCInput
 
 from custodian import Custodian
@@ -234,12 +235,33 @@ class RunQChemFake(FiretaskBase):
         # Check mol.qin
         ref_qin = QCInput.from_file(os.path.join(self["ref_dir"], input_file))
 
-        np.testing.assert_equal(ref_qin.molecule.species,
-                                user_qin.molecule.species)
-        np.testing.assert_allclose(
-            ref_qin.molecule.cart_coords,
-            user_qin.molecule.cart_coords,
-            atol=0.0001)
+        if isinstance(ref_qin.molecule, dict) and isinstance(user_qin.molecule, dict):
+            for ref, user in zip(ref_qin.molecule.get("reactants"),
+                                 user_qin.molecule.get("reactants")):
+                np.testing.assert_equal(ref.species,
+                                        user.species)
+                np.testing.assert_allclose(
+                    ref.cart_coords,
+                    user.cart_coords,
+                    atol=0.001)
+
+            for ref, user in zip(ref_qin.molecule.get("products"),
+                                 user_qin.molecule.get("products")):
+                np.testing.assert_equal(ref.species,
+                                        user.species)
+                np.testing.assert_allclose(
+                    ref.cart_coords,
+                    user.cart_coords,
+                    atol=0.001)
+
+        else:
+            np.testing.assert_equal(ref_qin.molecule.species,
+                                    user_qin.molecule.species)
+            np.testing.assert_allclose(
+                ref_qin.molecule.cart_coords,
+                user_qin.molecule.cart_coords,
+                atol=0.0001)
+
         for key in ref_qin.rem:
             if user_qin.rem.get(key) != ref_qin.rem.get(key):
                 raise ValueError("Rem key {} is inconsistent!".format(key))

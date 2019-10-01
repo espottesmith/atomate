@@ -112,7 +112,7 @@ def get_wf_ts_search(reactants,
             db_file=db_file)
 
     fw2 = FrequencyFlatteningTransitionStateFW(
-        name="ts_search_ff_ts",
+        name="ff_ts_optimization",
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
