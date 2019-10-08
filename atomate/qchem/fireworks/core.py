@@ -400,7 +400,8 @@ class FreezingStringFW(Firework):
                                    spin_multiplicity=products[0].spin_multiplicity)
                 molecule = {"reactants": reactants, "products": [product]}
             elif len(reactants) == 1:
-                mapping = map_atoms_reaction(pro_mgs, rct_mgs[0])
+                mapping = map_atoms_reaction(pro_mgs, rct_mgs[0],
+                                             num_additions_allowed=additions_allowed)
                 # print(mapping)
                 species = [None for _ in range(len(reactants[0]))]
                 coords = [None for _ in range(len(reactants[0]))]
@@ -508,7 +509,8 @@ class GrowingStringFW(Firework):
                        for p in products]
             # TODO: make this a FireTask
             if len(products) == 1:
-                mapping = map_atoms_reaction(rct_mgs, pro_mgs[0])
+                mapping = map_atoms_reaction(rct_mgs, pro_mgs[0],
+                                             num_additions_allowed=additions_allowed)
                 if mapping is None:
                     raise ValueError("Reactant atoms cannot be mapped to product molecules using existing methods. "
                                      "Please map atoms by hand and set map_atoms=False to try again.")
