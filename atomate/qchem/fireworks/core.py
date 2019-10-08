@@ -335,6 +335,7 @@ class FreezingStringFW(Firework):
                  db_file=None,
                  parents=None,
                  map_atoms=True,
+                 additions_allowed=0,
                  **kwargs):
         """
         Identify a guess geometry for a reaction transition state using the freezing string method.
@@ -365,6 +366,9 @@ class FreezingStringFW(Firework):
                                        as seen in the test_double_FF_opt workflow test.
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
+            map_atoms (Bool): Should an attempt be made to map reactant atoms to product atoms?
+            additions_allowed (int): If mapping is to be done, can fictitious bonds be added to ensure
+                                     that a subgraph isomorphism is found?
             **kwargs: Other kwargs that are passed to Firework.__init__.
         """
 
@@ -381,7 +385,8 @@ class FreezingStringFW(Firework):
                        for p in products]
             # TODO: make this a FireTask
             if len(products) == 1:
-                mapping = map_atoms_reaction(rct_mgs, pro_mgs[0])
+                mapping = map_atoms_reaction(rct_mgs, pro_mgs[0],
+                                             num_additions_allowed=additions_allowed)
                 if mapping is None:
                     raise ValueError("Reactant atoms cannot be mapped to product molecules using existing methods. "
                                      "Please map atoms by hand and set map_atoms=False to try again.")
@@ -453,6 +458,7 @@ class GrowingStringFW(Firework):
                  db_file=None,
                  parents=None,
                  map_atoms=True,
+                 additions_allowed=0,
                  **kwargs):
         """
         Identify a guess geometry for a reaction transition state using the growing string method.
@@ -483,6 +489,9 @@ class GrowingStringFW(Firework):
                                        as seen in the test_double_FF_opt workflow test.
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
+            map_atoms (Bool): Should an attempt be made to map reactant atoms to product atoms?
+            additions_allowed (int): If mapping is to be done, can fictitious bonds be added to ensure
+                                     that a subgraph isomorphism is found?
             **kwargs: Other kwargs that are passed to Firework.__init__.
         """
 
@@ -513,8 +522,9 @@ class GrowingStringFW(Firework):
                                    spin_multiplicity=products[0].spin_multiplicity)
                 molecule = {"reactants": reactants, "products": [product]}
             elif len(reactants) == 1:
-                mapping = map_atoms_reaction(pro_mgs, rct_mgs[0])
-                # print(mapping)
+                mapping = map_atoms_reaction(pro_mgs, rct_mgs[0],
+                                             num_additions_allowed=additions_allowed)
+
                 species = [None for _ in range(len(reactants[0]))]
                 coords = [None for _ in range(len(reactants[0]))]
                 for e, site in enumerate(reactants[0]):
