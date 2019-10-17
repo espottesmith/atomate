@@ -233,7 +233,7 @@ class QChemDrone(AbstractDrone):
                 d["output"]["frequencies"] = d_calc_final["frequencies"]
                 d["output"]["enthalpy"] = d_calc_final["total_enthalpy"]
                 d["output"]["entropy"] = d_calc_final["total_entropy"]
-                if d["input"]["job_type"] == "opt" or d["input"]["job_type"] == "optimization":
+                if d["input"]["job_type"] in ["opt", "optimization", "ts"]:
                     d["output"]["optimized_molecule"] = d_calc_final[
                         "initial_molecule"]
                     d["output"]["final_energy"] = d["calcs_reversed"][1][
