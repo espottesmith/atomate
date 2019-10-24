@@ -840,7 +840,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
 class BernyOptimizeFW(Firework):
     def __init__(self,
                  molecule=None,
-                 name="frequency flattening structure optimization",
+                 name="structure optimization with Berny optimizer",
                  qchem_cmd=">>qchem_cmd<<",
                  multimode=">>multimode<<",
                  max_cores=">>max_cores<<",
