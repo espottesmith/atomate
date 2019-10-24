@@ -10,9 +10,10 @@ import subprocess
 
 from pymatgen.core.structure import Molecule
 from pymatgen.io.qchem.inputs import QCInput
+from pymatgen.analysis.berny import BernyOptimizer
 
 from custodian import Custodian
-from custodian.qchem.handlers import QChemErrorHandler
+from custodian.qchem.handlers import QChemErrorHandler, QChemOptErrorHandler
 from custodian.qchem.jobs import QCJob
 
 from fireworks import explicit_serialize, FiretaskBase
@@ -98,6 +99,12 @@ class RunQChemCustodian(FiretaskBase):
                               to perform. Defaults to 10.
         max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
                                             applied to the molecule. Defaults to 0.3.
+        transition_state (bool): If True (default False), the optimization will
+            use job_type "ts" and will search for a saddle point
+
+        *** Just for berny_opt_with_frequency_flattener ***
+        optimizer (pymatgen.analysis.berny.BernyOptimizer): Geometry optimizer
+            to be used alongside (and in some respects instead of) Q-Chem
 
     """
     required_params = ["qchem_cmd"]
@@ -105,7 +112,8 @@ class RunQChemCustodian(FiretaskBase):
         "multimode", "input_file", "output_file", "max_cores", "qclog_file",
         "suffix", "scratch_dir", "save_scratch", "save_name", "max_errors",
         "max_iterations", "max_molecule_perturb_scale", "linked",
-        "job_type", "handler_group", "gzipped_output", "transition_state"
+        "job_type", "handler_group", "gzipped_output", "transition_state",
+        "optimizer"
     ]
 
     def run_task(self, fw_spec):
@@ -136,8 +144,11 @@ class RunQChemCustodian(FiretaskBase):
 
         handler_groups = {
             "default": [
-                QChemErrorHandler(
-                    input_file=input_file, output_file=output_file)
+                QChemErrorHandler(input_file=input_file, output_file=output_file),
+                QChemOptErrorHandler(input_file=input_file, output_file=output_file)
+            ],
+            "no_opt": [
+                QChemErrorHandler(input_file=input_file, output_file=output_file)
             ],
             "no_handler": []
         }
