@@ -211,6 +211,7 @@ class RunQChemCustodian(FiretaskBase):
                     max_cores=max_cores)
             else:
                 jobs = QCJob.berny_opt_with_frequency_flattener(
+                    optimizer=optimizer,
                     qchem_command=qchem_cmd,
                     multimode=multimode,
                     input_file=input_file,
