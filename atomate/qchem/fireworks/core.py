@@ -928,7 +928,8 @@ class BernyOptimizeFW(Firework):
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
                 transition_state=True,
                 handler_group="no_opt",
-                linked=linked))
+                linked=linked,
+                optimizer=optimizer))
         t.append(
             QChemToDb(
                 db_file=db_file,
