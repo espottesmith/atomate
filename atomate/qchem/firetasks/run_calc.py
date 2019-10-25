@@ -210,7 +210,7 @@ class RunQChemCustodian(FiretaskBase):
                     linked=linked,
                     max_cores=max_cores)
             else:
-                jobs = QCJob.opt_with_frequency_flattener(
+                jobs = QCJob.berny_opt_with_frequency_flattener(
                     qchem_command=qchem_cmd,
                     multimode=multimode,
                     input_file=input_file,
@@ -228,7 +228,10 @@ class RunQChemCustodian(FiretaskBase):
             raise ValueError("Unsupported job type: {}".format(job_type))
 
         # construct handlers
-        handlers = handler_groups[self.get("handler_group", "default")]
+        if optimizer is None:
+            handlers = handler_groups[self.get("handler_group", "default")]
+        else:
+            handlers = handler_groups[self.get("handler_group", "no_opt")]
 
         c = Custodian(
             handlers,
