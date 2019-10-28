@@ -113,7 +113,7 @@ class RunQChemCustodian(FiretaskBase):
         "suffix", "scratch_dir", "save_scratch", "save_name", "max_errors",
         "max_iterations", "max_molecule_perturb_scale", "linked",
         "job_type", "handler_group", "gzipped_output", "transition_state",
-        "optimizer"
+        "optimizer_params"
     ]
 
     def run_task(self, fw_spec):
@@ -141,7 +141,7 @@ class RunQChemCustodian(FiretaskBase):
         job_type = self.get("job_type", "normal")
         gzipped_output = self.get("gzipped_output", True)
         transition_state = self.get("transition_state", False)
-        optimizer = self.get("optimizer", None)
+        optimizer_params = self.get("optimizer_params", None)
 
         handler_groups = {
             "default": [
@@ -200,7 +200,6 @@ class RunQChemCustodian(FiretaskBase):
         elif job_type == "berny_opt_with_frequency_flattener":
             if linked:
                 jobs = QCJob.berny_opt_with_frequency_flattener(
-                    optimizer=optimizer,
                     qchem_command=qchem_cmd,
                     multimode=multimode,
                     input_file=input_file,
@@ -208,10 +207,10 @@ class RunQChemCustodian(FiretaskBase):
                     qclog_file=qclog_file,
                     max_iterations=max_iterations,
                     linked=linked,
-                    max_cores=max_cores)
+                    max_cores=max_cores,
+                    optimizer_params=optimizer_params)
             else:
                 jobs = QCJob.berny_opt_with_frequency_flattener(
-                    optimizer=optimizer,
                     qchem_command=qchem_cmd,
                     multimode=multimode,
                     input_file=input_file,
@@ -223,7 +222,8 @@ class RunQChemCustodian(FiretaskBase):
                     scratch_dir=scratch_dir,
                     save_scratch=save_scratch,
                     save_name=save_name,
-                    max_cores=max_cores)
+                    max_cores=max_cores,
+                    optimizer_params=optimizer_params)
 
         else:
             raise ValueError("Unsupported job type: {}".format(job_type))

@@ -899,13 +899,16 @@ class BernyOptimizeFW(Firework):
         qchem_input_params = qchem_input_params or {}
         qchem_input_params["geom_opt_max_cycles"] = 1
         optimizer_params = optimizer_params or {}
-        optimizer = BernyOptimizer(molecule, transition_state=transition_state,
-                                   **optimizer_params)
+        optimizer_params["molecule"] = molecule.as_dict()
+        optimizer_params["transition_state"] = transition_state
+        if "max_steps" not in optimizer_params:
+            optimizer_params["max_steps"] = 250
+
         input_file = "mol.qin"
         output_file = "mol.qout"
         runs = list()
         for ii in range(max_iterations):
-            for jj in range(optimizer.max_steps):
+            for jj in range(optimizer_params["max_steps"]):
                 runs.append("opt_{}_{}".format(ii, jj))
             runs.append("freq_{}".format(ii))
 
@@ -929,7 +932,7 @@ class BernyOptimizeFW(Firework):
                 transition_state=True,
                 handler_group="no_opt",
                 linked=linked,
-                optimizer=optimizer))
+                optimizer_params=optimizer_params))
         t.append(
             QChemToDb(
                 db_file=db_file,
