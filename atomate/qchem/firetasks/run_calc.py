@@ -229,7 +229,7 @@ class RunQChemCustodian(FiretaskBase):
             raise ValueError("Unsupported job type: {}".format(job_type))
 
         # construct handlers
-        if optimizer is None:
+        if optimizer_params is None:
             handlers = handler_groups[self.get("handler_group", "default")]
         else:
             handlers = handler_groups[self.get("handler_group", "no_opt")]
