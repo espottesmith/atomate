@@ -198,32 +198,15 @@ class RunQChemCustodian(FiretaskBase):
                     max_cores=max_cores)
 
         elif job_type == "berny_opt_with_frequency_flattener":
-            if linked:
-                jobs = QCJob.berny_opt_with_frequency_flattener(
-                    qchem_command=qchem_cmd,
-                    multimode=multimode,
-                    input_file=input_file,
-                    output_file=output_file,
-                    qclog_file=qclog_file,
-                    max_iterations=max_iterations,
-                    linked=linked,
-                    max_cores=max_cores,
-                    optimizer_params=optimizer_params)
-            else:
-                jobs = QCJob.berny_opt_with_frequency_flattener(
-                    qchem_command=qchem_cmd,
-                    multimode=multimode,
-                    input_file=input_file,
-                    output_file=output_file,
-                    qclog_file=qclog_file,
-                    max_iterations=max_iterations,
-                    linked=linked,
-                    max_molecule_perturb_scale=max_molecule_perturb_scale,
-                    scratch_dir=scratch_dir,
-                    save_scratch=save_scratch,
-                    save_name=save_name,
-                    max_cores=max_cores,
-                    optimizer_params=optimizer_params)
+            jobs = QCJob.berny_opt_with_frequency_flattener(
+                qchem_command=qchem_cmd,
+                multimode=multimode,
+                input_file=input_file,
+                output_file=output_file,
+                qclog_file=qclog_file,
+                max_iterations=max_iterations,
+                optimizer_params=optimizer_params,
+                max_cores=max_cores)
 
         else:
             raise ValueError("Unsupported job type: {}".format(job_type))
