@@ -848,8 +848,6 @@ class BernyOptimizeFW(Firework):
                  transition_state=False,
                  optimizer_params=None,
                  max_iterations=10,
-                 max_molecule_perturb_scale=0.3,
-                 linked=False,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -889,8 +887,6 @@ class BernyOptimizeFW(Firework):
                                          and initial trust radius.
                 max_iterations (int): Number of perturbation -> optimization -> frequency
                                       iterations to perform. Defaults to 10.
-                max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
-                                                    applied to the molecule. Defaults to 0.3.
                 db_file (str): Path to file specifying db credentials to place output parsing.
                 parents ([Firework]): Parents of this particular Firework.
                 **kwargs: Other kwargs that are passed to Firework.__init__.
@@ -927,10 +923,8 @@ class BernyOptimizeFW(Firework):
                 max_cores=max_cores,
                 job_type="berny_opt_with_frequency_flattener",
                 max_iterations=max_iterations,
-                max_molecule_perturb_scale=max_molecule_perturb_scale,
-                transition_state=True,
+                transition_state=transition_state,
                 handler_group="no_opt",
-                linked=linked,
                 optimizer_params=optimizer_params))
         t.append(
             QChemToDb(
@@ -941,7 +935,7 @@ class BernyOptimizeFW(Firework):
                 additional_fields={
                     "task_label": name,
                     "special_run_type": "berny_optimization",
-                    "linked": linked
+                    "linked": True
                 }))
 
         super(BernyOptimizeFW, self).__init__(
