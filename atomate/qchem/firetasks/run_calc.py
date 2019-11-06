@@ -101,6 +101,9 @@ class RunQChemCustodian(FiretaskBase):
                                             applied to the molecule. Defaults to 0.3.
         transition_state (bool): If True (default False), the optimization will
             use job_type "ts" and will search for a saddle point
+        linked (bool): If True (default False), scratch files from frequency
+            calculations will be used to inform the optimization steps
+            (providing a better guess of the potential energy surface).
 
         *** Just for berny_opt_with_frequency_flattener ***
         optimizer (pymatgen.analysis.berny.BernyOptimizer): Geometry optimizer
@@ -113,7 +116,7 @@ class RunQChemCustodian(FiretaskBase):
         "suffix", "scratch_dir", "save_scratch", "save_name", "max_errors",
         "max_iterations", "max_molecule_perturb_scale", "linked",
         "job_type", "handler_group", "gzipped_output", "transition_state",
-        "optimizer_params"
+        "optimizer_params", "first_freq"
     ]
 
     def run_task(self, fw_spec):
@@ -136,6 +139,7 @@ class RunQChemCustodian(FiretaskBase):
         max_errors = self.get("max_errors", 5)
         max_iterations = self.get("max_iterations", 10)
         linked = self.get("linked", False)
+        first_freq = self.get("first_freq", False)
         max_molecule_perturb_scale = self.get("max_molecule_perturb_scale",
                                               0.3)
         job_type = self.get("job_type", "normal")
@@ -179,6 +183,7 @@ class RunQChemCustodian(FiretaskBase):
                     qclog_file=qclog_file,
                     max_iterations=max_iterations,
                     linked=linked,
+                    first_freq=first_freq,
                     transition_state=transition_state,
                     max_cores=max_cores)
             else:
@@ -205,6 +210,7 @@ class RunQChemCustodian(FiretaskBase):
                 output_file=output_file,
                 qclog_file=qclog_file,
                 max_iterations=max_iterations,
+                first_freq=first_freq,
                 optimizer_params=optimizer_params,
                 max_cores=max_cores)
 

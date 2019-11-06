@@ -663,6 +663,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                  max_iterations=10,
                  max_molecule_perturb_scale=0.3,
                  linked=False,
+                 first_freq=False,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -698,6 +699,12 @@ class FrequencyFlatteningOptimizeFW(Firework):
                                   iterations to perform. Defaults to 10.
             max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
                                                 applied to the molecule. Defaults to 0.3.
+            linked (bool): If True (default False), the scratch output from one calculation will be passed
+                from one calculation to the next, improving convergence behavior.
+            first_freq (bool): If True (default False), run a frequency
+                calculation before any opt/ts searches to improve understanding
+                of the local potential energy surface. Only use this option if
+                linked=True.
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
             **kwargs: Other kwargs that are passed to Firework.__init__.
@@ -708,12 +715,20 @@ class FrequencyFlatteningOptimizeFW(Firework):
         output_file = "mol.qout"
 
         t = list()
-        t.append(
-            WriteInputFromIOSet(
-                molecule=molecule,
-                qchem_input_set="OptSet",
-                input_file=input_file,
-                qchem_input_params=qchem_input_params))
+        if first_freq:
+            t.append(
+                WriteInputFromIOSet(
+                    molecule=molecule,
+                    qchem_input_set="FreqSet",
+                    input_file=input_file,
+                    qchem_input_params=qchem_input_params))
+        else:
+            t.append(
+                WriteInputFromIOSet(
+                    molecule=molecule,
+                    qchem_input_set="OptSet",
+                    input_file=input_file,
+                    qchem_input_params=qchem_input_params))
         t.append(
             RunQChemCustodian(
                 qchem_cmd=qchem_cmd,
@@ -724,7 +739,8 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 job_type="opt_with_frequency_flattener",
                 max_iterations=max_iterations,
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
-                linked=linked))
+                linked=linked,
+                first_freq=first_freq))
         t.append(
             QChemToDb(
                 db_file=db_file,
@@ -834,8 +850,8 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                 max_iterations=max_iterations,
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
                 transition_state=True,
-                first_freq=first_freq,
-                linked=linked))
+                linked=linked,
+                first_freq=first_freq))
         t.append(
             QChemToDb(
                 db_file=db_file,
