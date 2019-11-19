@@ -83,6 +83,7 @@ class RunQChemCustodian(FiretaskBase):
         max_cores (int): Maximum number of cores to parallelize over. Supports env_chk.
         qclog_file (str): Name of the file to redirect the standard output to. None means
                           not to record the standard output. Defaults to None.
+        berny_logfile (str): Name of the file to print pyberny output to. Defaults to "berny.log"
         suffix (str): String to append to the file in postprocess.
         scratch_dir (str): QCSCRATCH directory. Defaults to "/dev/shm/qcscratch/".
                            Supports env_chk.
@@ -116,7 +117,7 @@ class RunQChemCustodian(FiretaskBase):
         "suffix", "scratch_dir", "save_scratch", "save_name", "max_errors",
         "max_iterations", "max_molecule_perturb_scale", "linked",
         "job_type", "handler_group", "gzipped_output", "transition_state",
-        "optimizer_params", "first_freq"
+        "optimizer_params", "first_freq", "berny_logfile"
     ]
 
     def run_task(self, fw_spec):
@@ -130,6 +131,7 @@ class RunQChemCustodian(FiretaskBase):
         output_file = self.get("output_file", "mol.qout")
         max_cores = env_chk(self["max_cores"], fw_spec)
         qclog_file = self.get("qclog_file", "mol.qclog")
+        berny_logfile = self.get("berny_logfile", "berny.log")
         suffix = self.get("suffix", "")
         scratch_dir = env_chk(self.get("scratch_dir"), fw_spec)
         if scratch_dir == None:
@@ -209,6 +211,7 @@ class RunQChemCustodian(FiretaskBase):
                 input_file=input_file,
                 output_file=output_file,
                 qclog_file=qclog_file,
+                berny_logfile=berny_logfile,
                 max_iterations=max_iterations,
                 first_freq=first_freq,
                 optimizer_params=optimizer_params,
