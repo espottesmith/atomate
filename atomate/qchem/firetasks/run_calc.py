@@ -7,6 +7,7 @@
 import shutil
 import os
 import subprocess
+import logging
 
 from pymatgen.core.structure import Molecule
 from pymatgen.io.qchem.inputs import QCInput
@@ -18,7 +19,7 @@ from custodian.qchem.jobs import QCJob
 
 from fireworks import explicit_serialize, FiretaskBase
 
-from atomate.utils.utils import env_chk, get_logger
+from atomate.utils.utils import env_chk#, get_logger
 import numpy as np
 
 __author__ = "Samuel Blau"
@@ -30,7 +31,8 @@ __status__ = "Alpha"
 __date__ = "5/11/18"
 __credits__ = "Shyam Dwaraknath, Xiaohui Qu, Shyue Ping Ong, Anubhav Jain"
 
-logger = get_logger(__name__)
+# logger = logging.getLogger(__name__)
+# logger = get_logger(__name__)
 
 
 @explicit_serialize
@@ -58,10 +60,10 @@ class RunQChemDirect(FiretaskBase):
             scratch_dir = "/dev/shm/qcscratch/"
         os.putenv("QCSCRATCH", scratch_dir)
 
-        logger.info("Running command: {}".format(cmd))
+        # logger.info("Running command: {}".format(cmd))
         return_code = subprocess.call(cmd, shell=True)
-        logger.info("Command {} finished running with return code: {}".format(
-            cmd, return_code))
+        # logger.info("Command {} finished running with return code: {}".format(
+        #     cmd, return_code))
 
 
 @explicit_serialize
@@ -85,17 +87,20 @@ class RunQChemCustodian(FiretaskBase):
                           not to record the standard output. Defaults to None.
         berny_logfile (str): Name of the file to print pyberny output to. Defaults to "berny.log"
         suffix (str): String to append to the file in postprocess.
-        scratch_dir (str): QCSCRATCH directory. Defaults to "/dev/shm/qcscratch/".
-                           Supports env_chk.
+        calc_loc (str): Path where Q-Chem should run. Will env_chk by default. If not in
+                        environment, will be set to None, in which case Q-Chem will run in
+                        the system-defined QCLOCALSCR.
         save_scratch (bool): Whether to save scratch directory contents. Defaults to False.
-        save_name (str): Name of the saved scratch directory. Defaults to "default_save_name".
         max_errors (int): Maximum # of errors to fix before giving up (default=5)
         job_type (str): Choose from "normal" (default) and "opt_with_frequency_flattener"
         handler_group (str): Group of handlers to use. See handler_groups dict in the code
                              for the groups and complete list of handlers in each group.
-        gzip_output (bool): gzip output (default=T)
+        gzip_output (bool): gzip output, defaults to True.
+        backup (bool): Whether to backup the initial input file. If True, the input will
+                       be copied with a ".orig" appended. Defaults to True.
 
         *** Just for opt_with_frequency_flattener ***
+        linked (bool): Whether or not to use the linked flattener. Defaults to True.
         max_iterations (int): Number of perturbation -> optimization -> frequency iterations
                               to perform. Defaults to 10.
         max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
@@ -114,10 +119,10 @@ class RunQChemCustodian(FiretaskBase):
     required_params = ["qchem_cmd"]
     optional_params = [
         "multimode", "input_file", "output_file", "max_cores", "qclog_file",
-        "suffix", "scratch_dir", "save_scratch", "save_name", "max_errors",
+        "suffix", "calc_loc", "save_scratch", "max_errors", "job_type",
         "max_iterations", "max_molecule_perturb_scale", "linked",
-        "job_type", "handler_group", "gzipped_output", "transition_state",
-        "optimizer_params", "first_freq", "berny_logfile"
+        "job_type", "handler_group", "gzipped_output", "backup", "freq_first",
+        "berny_logfile"
     ]
 
     def run_task(self, fw_spec):
@@ -133,15 +138,13 @@ class RunQChemCustodian(FiretaskBase):
         qclog_file = self.get("qclog_file", "mol.qclog")
         berny_logfile = self.get("berny_logfile", "berny.log")
         suffix = self.get("suffix", "")
-        scratch_dir = env_chk(self.get("scratch_dir"), fw_spec)
-        if scratch_dir == None:
-            scratch_dir = "/dev/shm/qcscratch/"
+        calc_loc = env_chk(self.get("calc_loc"), fw_spec)
         save_scratch = self.get("save_scratch", False)
-        save_name = self.get("save_name", "saved_scratch")
         max_errors = self.get("max_errors", 5)
         max_iterations = self.get("max_iterations", 10)
-        linked = self.get("linked", False)
         first_freq = self.get("first_freq", False)
+        linked = self.get("linked", True)
+        backup = self.get("backup", True)
         max_molecule_perturb_scale = self.get("max_molecule_perturb_scale",
                                               0.3)
         job_type = self.get("job_type", "normal")
@@ -171,9 +174,9 @@ class RunQChemCustodian(FiretaskBase):
                     output_file=output_file,
                     qclog_file=qclog_file,
                     suffix=suffix,
-                    scratch_dir=scratch_dir,
+                    calc_loc=calc_loc,
                     save_scratch=save_scratch,
-                    save_name=save_name)
+                    backup=backup)
             ]
         elif job_type == "opt_with_frequency_flattener":
             if linked:
@@ -187,7 +190,9 @@ class RunQChemCustodian(FiretaskBase):
                     linked=linked,
                     first_freq=first_freq,
                     transition_state=transition_state,
-                    max_cores=max_cores)
+                    save_final_scratch=save_scratch,
+                    max_cores=max_cores,
+                    calc_loc=calc_loc)
             else:
                 jobs = QCJob.opt_with_frequency_flattener(
                     qchem_command=qchem_cmd,
@@ -196,13 +201,13 @@ class RunQChemCustodian(FiretaskBase):
                     output_file=output_file,
                     qclog_file=qclog_file,
                     max_iterations=max_iterations,
+                    max_molecule_perturb_scale=max_molecule_perturb_scale,
                     linked=linked,
                     max_molecule_perturb_scale=max_molecule_perturb_scale,
-                    scratch_dir=scratch_dir,
-                    save_scratch=save_scratch,
-                    save_name=save_name,
+                    save_final_scratch=save_scratch,
+                    max_cores=max_cores,
                     transition_state=transition_state,
-                    max_cores=max_cores)
+                    calc_loc=calc_loc)
 
         elif job_type == "berny_opt_with_frequency_flattener":
             jobs = QCJob.berny_opt_with_frequency_flattener(
@@ -314,7 +319,7 @@ class RunQChemFake(FiretaskBase):
                     raise ValueError(
                         "Solvent key {} is inconsistent!".format(key))
 
-        logger.info("RunQChemFake: verified input successfully")
+        # logger.info("RunQChemFake: verified input successfully")
 
     @staticmethod
     def _clear_inputs():
@@ -328,4 +333,4 @@ class RunQChemFake(FiretaskBase):
             full_file_name = os.path.join(self["ref_dir"], file_name)
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, os.getcwd())
-        logger.info("RunQChemFake: ran fake QChem, generated outputs")
+        # logger.info("RunQChemFake: ran fake QChem, generated outputs")
