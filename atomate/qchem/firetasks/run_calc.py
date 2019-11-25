@@ -9,9 +9,7 @@ import os
 import subprocess
 import logging
 
-from pymatgen.core.structure import Molecule
 from pymatgen.io.qchem.inputs import QCInput
-from pymatgen.analysis.berny import BernyOptimizer
 
 from custodian import Custodian
 from custodian.qchem.handlers import QChemErrorHandler, QChemOptErrorHandler
@@ -203,7 +201,6 @@ class RunQChemCustodian(FiretaskBase):
                     max_iterations=max_iterations,
                     max_molecule_perturb_scale=max_molecule_perturb_scale,
                     linked=linked,
-                    max_molecule_perturb_scale=max_molecule_perturb_scale,
                     save_final_scratch=save_scratch,
                     max_cores=max_cores,
                     transition_state=transition_state,
