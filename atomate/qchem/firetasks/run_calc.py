@@ -128,7 +128,7 @@ class RunQChemCustodian(FiretaskBase):
         # initialize variables
         qchem_cmd = env_chk(self["qchem_cmd"], fw_spec)
         multimode = env_chk(self.get("multimode"), fw_spec)
-        if multimode == None:
+        if multimode is None:
             multimode = "openmp"
         input_file = self.get("input_file", "mol.qin")
         output_file = self.get("output_file", "mol.qout")
