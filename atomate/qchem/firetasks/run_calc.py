@@ -138,7 +138,7 @@ class RunQChemCustodian(FiretaskBase):
         save_scratch = self.get("save_scratch", False)
         max_errors = self.get("max_errors", 5)
         max_iterations = self.get("max_iterations", 10)
-        first_freq = self.get("first_freq", False)
+        freq_before_opt = self.get("freq_before_opt", False)
         linked = self.get("linked", True)
         backup = self.get("backup", True)
         max_molecule_perturb_scale = self.get("max_molecule_perturb_scale",
@@ -184,7 +184,7 @@ class RunQChemCustodian(FiretaskBase):
                     qclog_file=qclog_file,
                     max_iterations=max_iterations,
                     linked=linked,
-                    first_freq=first_freq,
+                    freq_before_opt=freq_before_opt,
                     transition_state=transition_state,
                     save_final_scratch=save_scratch,
                     max_cores=max_cores,
@@ -213,7 +213,7 @@ class RunQChemCustodian(FiretaskBase):
                 qclog_file=qclog_file,
                 berny_logfile=berny_logfile,
                 max_iterations=max_iterations,
-                first_freq=first_freq,
+                freq_before_opt=freq_before_opt,
                 optimizer_params=optimizer_params,
                 max_cores=max_cores)
 
