@@ -662,7 +662,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                  max_iterations=10,
                  max_molecule_perturb_scale=0.3,
                  linked=False,
-                 first_freq=False,
+                 freq_before_opt=False,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -700,7 +700,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                                                 applied to the molecule. Defaults to 0.3.
             linked (bool): If True (default False), the scratch output from one calculation will be passed
                 from one calculation to the next, improving convergence behavior.
-            first_freq (bool): If True (default False), run a frequency
+            freq_before_opt (bool): If True (default False), run a frequency
                 calculation before any opt/ts searches to improve understanding
                 of the local potential energy surface. Only use this option if
                 linked=True.
@@ -714,7 +714,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
         output_file = "mol.qout"
 
         t = list()
-        if first_freq:
+        if freq_before_opt:
             t.append(
                 WriteInputFromIOSet(
                     molecule=molecule,
@@ -739,7 +739,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 max_iterations=max_iterations,
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
                 linked=linked,
-                first_freq=first_freq))
+                freq_before_opt=freq_before_opt))
         t.append(
             QChemToDb(
                 db_file=db_file,
@@ -768,7 +768,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                  max_iterations=10,
                  max_molecule_perturb_scale=0.3,
                  linked=False,
-                 first_freq=False,
+                 freq_before_opt=False,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -806,7 +806,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                                                 applied to the molecule. Defaults to 0.3.
             linked (bool): If True (default False), the scratch output from one calculation will be passed
                 from one calculation to the next, improving convergence behavior.
-            first_freq (bool): If True (default False), run a frequency
+            freq_before_opt (bool): If True (default False), run a frequency
                 calculation before any opt/ts searches to improve understanding
                 of the local potential energy surface. Only use this option if
                 linked=True.
@@ -820,11 +820,11 @@ class FrequencyFlatteningTransitionStateFW(Firework):
         output_file = "mol.qout"
         runs = list(chain.from_iterable([["ts_" + str(ii), "freq_" + str(ii)]
                                          for ii in range(10)]))
-        if first_freq:
+        if freq_before_opt:
             runs.insert(0, "freq_pre")
 
         t = list()
-        if first_freq:
+        if freq_before_opt:
             t.append(
                 WriteInputFromIOSet(
                     molecule=molecule,
@@ -850,7 +850,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                 max_molecule_perturb_scale=max_molecule_perturb_scale,
                 transition_state=True,
                 linked=linked,
-                first_freq=first_freq))
+                freq_before_opt=freq_before_opt))
         t.append(
             QChemToDb(
                 db_file=db_file,
@@ -881,7 +881,7 @@ class BernyOptimizeFW(Firework):
                  transition_state=False,
                  optimizer_params=None,
                  max_iterations=10,
-                 first_freq=False,
+                 freq_before_opt=False,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -927,7 +927,7 @@ class BernyOptimizeFW(Firework):
         """
 
         qchem_input_params = qchem_input_params or {}
-        if not first_freq:
+        if not freq_before_opt:
             qchem_input_params["geom_opt_max_cycles"] = 1
         optimizer_params = optimizer_params or {}
         optimizer_params["transition_state"] = transition_state
@@ -937,7 +937,7 @@ class BernyOptimizeFW(Firework):
         input_file = "mol.qin"
         output_file = "mol.qout"
         runs = list()
-        if first_freq:
+        if freq_before_opt:
             runs.append("freq_pre")
         for ii in range(max_iterations):
             for jj in range(optimizer_params["max_steps"]):
@@ -945,7 +945,7 @@ class BernyOptimizeFW(Firework):
             runs.append("freq_{}".format(ii))
 
         t = list()
-        if first_freq:
+        if freq_before_opt:
             t.append(
                 WriteInputFromIOSet(
                     molecule=molecule,
@@ -970,7 +970,7 @@ class BernyOptimizeFW(Firework):
                 max_iterations=max_iterations,
                 transition_state=transition_state,
                 handler_group="no_opt",
-                first_freq=first_freq,
+                freq_before_opt=freq_before_opt,
                 optimizer_params=optimizer_params))
         t.append(
             QChemToDb(
