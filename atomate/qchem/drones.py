@@ -12,7 +12,9 @@ from itertools import chain
 
 from monty.io import zopen
 from monty.json import jsanitize
-from pymatgen.io.qchem.outputs import QCOutput, check_for_structure_changes
+from pymatgen.io.qchem.outputs import (QCOutput,
+                                       BernyLogParser,
+                                       check_for_structure_changes)
 from pymatgen.io.qchem.inputs import QCInput
 from pymatgen.apps.borg.hive import AbstractDrone
 from pymatgen.io.babel import BabelMolAdaptor
@@ -76,7 +78,9 @@ class QChemDrone(AbstractDrone):
                              calculations in one input / output pair.
             extra_files (list): list of filenames which, in addition to the input and output
                                      files, must be present. This is most relevant for string
-                                     methods (ex: FSM), where multiple outputs are generated.
+                                     methods (ex: FSM), where multiple outputs are generated,
+                                     and for jobs using the Berny optimizer, where
+                                     optimization log files are produced.
 
         Returns:
             d (dict): a task dictionary
@@ -94,13 +98,12 @@ class QChemDrone(AbstractDrone):
         if extra_files is not None:
             in_path = os.listdir(path)
             for filename in extra_files:
+                # Generally, all extra_files are required
                 if filename not in in_path:
                     raise ValueError("Additional file {} not found!".format(filename))
         if len(qcinput_files) > 0 and len(qcoutput_files) > 0:
-            # Note: at least for FSM, QCOutput will automatically handle all additional output
-            # files, so generate_doc is not passed the extra_files argument
             d = self.generate_doc(path, qcinput_files, qcoutput_files,
-                                  multirun)
+                                  multirun, extra_files=extra_files)
             self.post_process(path, d)
         else:
             raise ValueError("Either input or output not found!")
@@ -141,7 +144,11 @@ class QChemDrone(AbstractDrone):
                     processed_files["standard"] = f
         return processed_files
 
-    def generate_doc(self, dir_name, qcinput_files, qcoutput_files, multirun):
+    def generate_doc(self, dir_name, qcinput_files, qcoutput_files, multirun,
+                     extra_files=None):
+
+        if extra_files is None:
+            extra_files = list()
         try:
             fullpath = os.path.abspath(dir_name)
             d = jsanitize(self.additional_fields, strict=True)
@@ -229,7 +236,7 @@ class QChemDrone(AbstractDrone):
                         d_calc_final["opt_constraint"][0],
                         float(d_calc_final["opt_constraint"][6])
                     ]
-            if d["output"]["job_type"] in ["freq", "frequency"]:
+            elif d["output"]["job_type"] in ["freq", "frequency"]:
                 d["output"]["frequencies"] = d_calc_final["frequencies"]
                 d["output"]["enthalpy"] = d_calc_final["total_enthalpy"]
                 d["output"]["entropy"] = d_calc_final["total_entropy"]
@@ -238,8 +245,7 @@ class QChemDrone(AbstractDrone):
                         "initial_molecule"]
                     d["output"]["final_energy"] = d["calcs_reversed"][1][
                         "final_energy"]
-
-            if d["output"]["job_type"] in ["fsm", "gsm"]:
+            elif d["output"]["job_type"] in ["fsm", "gsm"]:
                 d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
                 d["input"]["initial_product_molecule"] = d_calc_final["string_initial_product_molecules"]
                 d["input"]["initial_reactant_geometry"] = d_calc_final["string_initial_reactant_geometry"]
@@ -275,10 +281,11 @@ class QChemDrone(AbstractDrone):
                 total_cputime = 0.0
                 total_walltime = 0.0
                 for calc in d["calcs_reversed"]:
-                    if calc["walltime"] is not None:
-                        total_walltime += calc["walltime"]
-                    if calc["cputime"] is not None:
-                        total_cputime += calc["cputime"]
+                    if "walltime" in calc and "cputime" in calc:
+                        if calc["walltime"] is not None:
+                            total_walltime += calc["walltime"]
+                        if calc["cputime"] is not None:
+                            total_cputime += calc["cputime"]
                 d["walltime"] = total_walltime
                 d["cputime"] = total_cputime
             else:
@@ -304,9 +311,32 @@ class QChemDrone(AbstractDrone):
             d["smiles"] = smiles
 
             d["state"] = "successful" if d_calc_final["completion"] else "unsuccessful"
+
             if "special_run_type" in d:
                 if d["special_run_type"] == "frequency_flattener":
-                    opt_traj = []
+                    if d["state"] == "successful":
+                        orig_num_neg_freq = sum(1 for freq in d["calcs_reversed"][-2]["frequencies"] if freq < 0)
+                        orig_energy = d_calc_init["final_energy"]
+                        final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
+                        final_energy = d["calcs_reversed"][1]["final_energy"]
+                        d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
+                        if final_num_neg_freq > 0: # If a negative frequency remains,
+                            # and it's too large to ignore,
+                            if final_num_neg_freq > 1 or abs(d["output"]["frequencies"][0]) >= 15.0:
+                                d["state"] = "unsuccessful" # then the flattening was unsuccessful
+                        if final_energy > orig_energy:
+                            d["warnings"]["energy_increased"] = True
+
+                elif d["special_run_type"] == "berny_optimization":
+                    logfiles = [f for f in os.listdir(dir_name)
+                                if f.startswith("berny.log")]
+                    berny_traj = list()
+                    for log in logfiles:
+                        parsed = BernyLogParser(os.path.join(dir_name, log))
+
+
+                if d["special_run_type"] in ["frequency_flattener", "berny_optimization"]:
+                    opt_traj = list()
                     for entry in d["calcs_reversed"]:
                         if entry["input"]["rem"]["job_type"] in ["opt", "optimization", "ts"]:
                             doc = {"initial": {}, "final": {}}
@@ -343,19 +373,6 @@ class QChemDrone(AbstractDrone):
                                     if entry["initial"]["scf_energy"] != opt_traj[ii-1]["final"]["scf_energy"]:
                                         opt_trajectory["discontinuity"]["scf_energy"].append([ii-1,ii])
                     d["opt_trajectory"] = opt_trajectory
-
-                    if d["state"] == "successful":
-                        orig_num_neg_freq = sum(1 for freq in d["calcs_reversed"][-2]["frequencies"] if freq < 0)
-                        orig_energy = d_calc_init["final_energy"]
-                        final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
-                        final_energy = d["calcs_reversed"][1]["final_energy"]
-                        d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
-                        if final_num_neg_freq > 0: # If a negative frequency remains,
-                            # and it's too large to ignore,
-                            if final_num_neg_freq > 1 or abs(d["output"]["frequencies"][0]) >= 15.0:
-                                d["state"] = "unsuccessful" # then the flattening was unsuccessful
-                        if final_energy > orig_energy:
-                            d["warnings"]["energy_increased"] = True
 
             d["last_updated"] = datetime.datetime.utcnow()
             return d
