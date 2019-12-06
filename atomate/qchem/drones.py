@@ -492,4 +492,3 @@ class QChemDrone(AbstractDrone):
     @staticmethod
     def get_valid_paths(self, path):
         return [path]
-`
