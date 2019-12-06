@@ -9,6 +9,7 @@ import json
 import glob
 import traceback
 from itertools import chain
+import copy
 
 from monty.io import zopen
 from monty.json import jsanitize
@@ -274,8 +275,6 @@ class QChemDrone(AbstractDrone):
                     d["output"]["final_energy"] = d_calc_final["final_energy"]
                 else:
                     d["output"]["final_energy"] = d_calc_final["SCF"][-1][-1][0]
-                # else:
-                #     print(d_calc_final)
 
             if d_calc_final["completion"]:
                 total_cputime = 0.0
