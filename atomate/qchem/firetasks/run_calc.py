@@ -113,8 +113,9 @@ class RunQChemCustodian(FiretaskBase):
         "multimode", "input_file", "output_file", "max_cores", "qclog_file",
         "suffix", "calc_loc", "save_scratch", "max_errors", "job_type",
         "max_iterations", "max_molecule_perturb_scale", "linked",
-        "job_type", "handler_group", "gzipped_output", "backup", "freq_first",
-        "berny_logfile", "optimizer_params", "transition_state"
+        "job_type", "handler_group", "gzipped_output", "backup",
+        "freq_before_opt", "berny_logfile", "optimizer_params",
+        "transition_state"
     ]
 
     def run_task(self, fw_spec):
