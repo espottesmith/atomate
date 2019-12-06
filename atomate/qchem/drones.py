@@ -1,4 +1,4 @@
-# coding: utf-8
+`# coding: utf-8
 
 
 import os
@@ -332,8 +332,20 @@ class QChemDrone(AbstractDrone):
                                 if f.startswith("berny.log")]
                     berny_traj = list()
                     for log in logfiles:
-                        parsed = BernyLogParser(os.path.join(dir_name, log))
+                        parsed = BernyLogParser(os.path.join(dir_name, log)).data
+                        doc = dict()
 
+                        doc["internals"] = parsed["internals"]
+                        doc["initial_energy"] = parsed["energy_trajectory"][0]
+                        doc["final_energy"] = parsed["final_energy"]
+                        doc["trust"] = parsed["trust"]
+                        doc["step_walltimes"] = parsed["opt_step_times"]
+                        doc["walltime"] = parsed["opt_walltime"]
+                        if d["walltime"] is not None:
+                            d["walltime"] += doc["walltime"]
+
+                        berny_traj.append(doc)
+                    d["berny_trajectory"] = berny_traj
 
                 if d["special_run_type"] in ["frequency_flattener", "berny_optimization"]:
                     opt_traj = list()
@@ -480,3 +492,4 @@ class QChemDrone(AbstractDrone):
     @staticmethod
     def get_valid_paths(self, path):
         return [path]
+`

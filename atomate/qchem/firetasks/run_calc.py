@@ -107,10 +107,6 @@ class RunQChemCustodian(FiretaskBase):
             calculations will be used to inform the optimization steps
             (providing a better guess of the potential energy surface).
 
-        *** Just for berny_opt_with_frequency_flattener ***
-        optimizer (pymatgen.analysis.berny.BernyOptimizer): Geometry optimizer
-            to be used alongside (and in some respects instead of) Q-Chem
-
     """
     required_params = ["qchem_cmd"]
     optional_params = [
@@ -118,7 +114,7 @@ class RunQChemCustodian(FiretaskBase):
         "suffix", "calc_loc", "save_scratch", "max_errors", "job_type",
         "max_iterations", "max_molecule_perturb_scale", "linked",
         "job_type", "handler_group", "gzipped_output", "backup", "freq_first",
-        "berny_logfile"
+        "berny_logfile", "optimizer_params", "transition_state"
     ]
 
     def run_task(self, fw_spec):

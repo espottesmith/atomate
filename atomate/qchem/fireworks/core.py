@@ -927,7 +927,10 @@ class BernyOptimizeFW(Firework):
         """
 
         qchem_input_params = qchem_input_params or {}
-        if not freq_before_opt:
+        if freq_before_opt:
+            if "geom_opt_max_cycles" in qchem_input_params:
+                del qchem_input_params["geom_opt_max_cycles"]
+        else:
             qchem_input_params["geom_opt_max_cycles"] = 1
         optimizer_params = optimizer_params or {}
         optimizer_params["transition_state"] = transition_state
