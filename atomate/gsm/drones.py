@@ -1,6 +1,5 @@
 # coding: utf-8
 
-
 import os
 import datetime
 from fnmatch import fnmatch
@@ -13,32 +12,33 @@ import copy
 
 from monty.io import zopen
 from monty.json import jsanitize
-from pymatgen.io.qchem.outputs import (QCOutput,
-                                       BernyLogParser,
-                                       check_for_structure_changes)
-from pymatgen.io.qchem.inputs import QCInput
+from pymatgen.io.qchem.outputs import XTBOutput
+from pymatgen.io.xtb.inputs import XTBInput
 from pymatgen.apps.borg.hive import AbstractDrone
 from pymatgen.io.babel import BabelMolAdaptor
+from pymatgen.analysis.graphs import MoleculeGraph
+from pymatgen.analysis.local_env import OpenBabelNN
+from pymatgen.analysis.fragmenter import metal_edge_extender
 from pymatgen.symmetry.analyzer import PointGroupAnalyzer
 
 from atomate.utils.utils import get_logger
 from atomate import __version__ as atomate_version
 
-__author__ = "Samuel Blau, Evan Spotte-Smith"
-__copyright__ = "Copyright 2018, The Materials Project"
+__author__ = "Evan Spotte-Smith"
+__copyright__ = "Copyright 2020, The Materials Project"
 __version__ = "0.1"
-__maintainer__ = "Samuel Blau"
-__email__ = "samblau1@gmail.com"
+__maintainer__ = "Evan Spotte-Smith"
+__email__ = "espottesmith@gmail.com"
 __status__ = "Alpha"
-__date__ = "4/25/18"
-__credits__ = "Brandon Wood, Shyam Dwaraknath, Xiaohui Qu, Kiran Mathew, Shyue Ping Ong, Anubhav Jain"
+__date__ = "02/18/20"
+__credits__ = "Sam Blau, Brandon Wood, Shyam Dwaraknath, Xiaohui Qu, Kiran Mathew, Shyue Ping Ong, Anubhav Jain"
 
 logger = get_logger(__name__)
 
 
-class QChemDrone(AbstractDrone):
+class GSMDrone(AbstractDrone):
     """
-    A QChem drone to parse QChem calculations and insert an organized, searchable entry into the database.
+    A drone to parse calculations from pyGSM and insert an organized, searchable entry into the database.
     """
 
     __version__ = atomate_version  # note: the version is inserted into the task doc
@@ -46,26 +46,24 @@ class QChemDrone(AbstractDrone):
     # Schema def of important keys and sub-keys; used in validation
     schema = {
         "root": {
-            "dir_name", "input", "output", "calcs_reversed", "smiles",
-            "walltime", "cputime", "formula_pretty", "formula_anonymous",
-            "chemsys", "pointgroup", "formula_alphabetical"
+            "dir_name", "string_id", "input", "output", "calcs_reversed",
+            "smiles", "walltime", "cputime", "formula_pretty",
+            "formula_anonymous", "chemsys", "pointgroup", "formula_alphabetical"
         },
-        "input": {"initial_molecule", "job_type"},
-        "output": {"initial_molecule", "job_type", "final_energy"}
+        "input": {"initial_reactants", "initial_products", "mode", "num_nodes",
+                  "ends_fixed"},
+        "output": {"string_nodes", "ts_guess", "ts_energy"}
     }
 
-    def __init__(self, runs=None, additional_fields=None):
+    def __init__(self, suffix="", additional_fields=None):
         """
-        Initialize a QChem drone to parse qchem calculations
+        Initialize a GSM drone to parse pyGSM calculations
         Args:
-            runs (list): Naming scheme for multiple calcuations in one folder
+            suffix (str): File suffix for files associated with this job
             additional_fields (dict): dictionary of additional fields to add to output document
         """
-        self.runs = runs or list(
-            chain.from_iterable([["opt_" + str(ii), "freq_" + str(ii)]
-                                 for ii in range(10)]))
-        self.runs = ["orig"] + self.runs
-        self.additional_fields = additional_fields or {}
+        self.run = suffix
+        self.additional_fields = additional_fields or dict()
 
     def assimilate(self, path, input_file, output_file, multirun, extra_files=None):
         """
@@ -239,16 +237,13 @@ class QChemDrone(AbstractDrone):
                     ]
             elif d["output"]["job_type"] in ["freq", "frequency"]:
                 d["output"]["frequencies"] = d_calc_final["frequencies"]
-                d["output"]["frequency_modes"] = d_calc_final["frequency_mode_vectors"]
                 d["output"]["enthalpy"] = d_calc_final["total_enthalpy"]
                 d["output"]["entropy"] = d_calc_final["total_entropy"]
                 if d["input"]["job_type"] in ["opt", "optimization", "ts"]:
-                    d["output"]["optimized_molecule"] = d_calc_final["initial_molecule"]
-                    d["output"]["final_energy"] = d["calcs_reversed"][1]["final_energy"]
-                # For frequency-first calcs
-                elif d["calcs_reversed"][-2]["input"]["rem"]["job_type"] in ["ts", "opt", "optimization"]:
-                    d["output"]["optimized_molecule"] = d_calc_final["initial_molecule"]
-                    d["output"]["final_energy"] = d["calcs_reversed"][1]["final_energy"]
+                    d["output"]["optimized_molecule"] = d_calc_final[
+                        "initial_molecule"]
+                    d["output"]["final_energy"] = d["calcs_reversed"][1][
+                        "final_energy"]
             elif d["output"]["job_type"] in ["fsm", "gsm"]:
                 d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
                 d["input"]["initial_product_molecule"] = d_calc_final["string_initial_product_molecules"]
@@ -329,20 +324,6 @@ class QChemDrone(AbstractDrone):
                         if final_energy > orig_energy:
                             d["warnings"]["energy_increased"] = True
 
-                elif d["special_run_type"] == "ts_frequency_flattener":
-                    if d["state"] == "successful":
-                        orig_num_neg_freq = sum(1 for freq in d["calcs_reversed"][-2]["frequencies"] if freq < 0)
-                        orig_energy = d_calc_init["final_energy"]
-                        final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
-                        final_energy = d["calcs_reversed"][1]["final_energy"]
-                        d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
-                        if final_num_neg_freq > 1: # If a negative frequency remains,
-                            # and it's too large to ignore,
-                            if final_num_neg_freq > 2 or abs(d["output"]["frequencies"][1]) >= 15.0:
-                                d["state"] = "unsuccessful"  # then the flattening was unsuccessful
-                        if final_energy > orig_energy:
-                            d["warnings"]["energy_increased"] = True
-
                 elif d["special_run_type"] == "berny_optimization":
                     logfiles = [f for f in os.listdir(dir_name)
                                 if f.startswith("berny.log")]
@@ -363,11 +344,11 @@ class QChemDrone(AbstractDrone):
                         berny_traj.append(doc)
                     d["berny_trajectory"] = berny_traj
 
-                if d["special_run_type"] in ["frequency_flattener", "ts_frequency_flattener", "berny_optimization"]:
+                if d["special_run_type"] in ["frequency_flattener", "berny_optimization"]:
                     opt_traj = list()
                     for entry in d["calcs_reversed"]:
                         if entry["input"]["rem"]["job_type"] in ["opt", "optimization", "ts"]:
-                            doc = {"initial": dict(), "final": dict()}
+                            doc = {"initial": {}, "final": {}}
                             doc["initial"]["molecule"] = entry["initial_molecule"]
                             doc["final"]["molecule"] = entry["molecule_from_last_geometry"]
                             doc["initial"]["total_energy"] = entry["energy_trajectory"][0]

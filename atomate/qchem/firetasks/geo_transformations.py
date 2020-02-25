@@ -3,11 +3,14 @@
 
 # This module defines firetasks for writing QChem input files
 
-from fireworks import FiretaskBase, explicit_serialize, FWAction
-from pymatgen.io.babel import BabelMolAdaptor
+import copy
+
 import numpy as np
 
-__author__ = "Brandon Wood"
+from fireworks import FiretaskBase, explicit_serialize, FWAction
+from pymatgen.io.babel import BabelMolAdaptor
+
+__author__ = "Brandon Wood, Evan Spotte-Smith"
 __copyright__ = "Copyright 2018, The Materials Project"
 __version__ = "0.1"
 __maintainer__ = "Brandon Wood"
@@ -55,5 +58,41 @@ class RotateTorsion(FiretaskBase):
 
         # update the fw_spec with the rotated geometry
         update_spec = {"prev_calc_molecule": rotated_mol}
+
+        return FWAction(update_spec=update_spec)
+
+
+@explicit_serialize
+class PerturbGeometry(FiretaskBase):
+    """
+    Modify a Molecule geometry.
+
+    """
+
+    required_params = list()
+    optional_params = ["molecule", "mode", "scale"]
+
+    def run_task(self, fw_spec):
+        if self.get("molecule"):
+            mol = self.get("molecule")
+        elif fw_spec.get("prev_calc_molecule"):
+            mol = fw_spec.get("prev_calc_molecule")
+        else:
+            raise KeyError("No molecule present; add as an optional param or check fw_spec")
+
+        if self.get("mode"):
+            mode = self.get("mode")
+        elif fw_spec.get("prev_negative_mode"):
+            mode = fw_spec.get("prev_negative_mode")
+        else:
+            raise KeyError("No mode present; add as an optional param or check fw_spec")
+
+        mol_copy = copy.deepcopy(mol)
+
+        for ii in range(len(mol)):
+            vec = mode[ii]
+            mol_copy.translate_sites(indices=[ii], vector=vec * self.get("scale", 1))
+
+        update_spec = {"prev_calc_molecule": mol_copy}
 
         return FWAction(update_spec=update_spec)

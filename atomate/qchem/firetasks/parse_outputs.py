@@ -98,6 +98,9 @@ class QChemToDb(FiretaskBase):
                 update_spec["prev_calc_resp"] = task_doc["output"]["RESP"]
             elif "ESP" in task_doc["output"]:
                 update_spec["prev_calc_esp"] = task_doc["output"]["ESP"]
+
+        #TODO: Add prev_calc_freqs and prev_calc_modes
+
         if "task_label" in additional_fields:
             if "ts_search" in additional_fields["task_label"]:
                 tmp = dict()
@@ -109,6 +112,7 @@ class QChemToDb(FiretaskBase):
                 update_spec["ts_search"] = tmp
                 update_spec["prev_calc_molecule"] = task_doc["output"]["ts_guess"]
                 update_spec["prev_calc_mulliken"] = task_doc["output"]["mulliken"]
+                update_spec["prev_negative_mode"] = task_doc["output"]["frequency_modes"][0]
 
         # get the database connection
         db_file = env_chk(self.get("db_file"), fw_spec)

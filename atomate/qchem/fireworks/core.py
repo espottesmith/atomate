@@ -11,11 +11,13 @@ from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.io.qchem.utils import map_atoms_reaction
 
 from fireworks import Firework
+
 from atomate.qchem.firetasks.parse_outputs import QChemToDb
 from atomate.qchem.firetasks.run_calc import RunQChemCustodian
 from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet
 from atomate.qchem.firetasks.fragmenter import FragmentMolecule
 from atomate.qchem.firetasks.critic2 import RunCritic2
+from atomate.qchem.firetasks.geo_transformations import PerturbGeometry
 
 __author__ = "Samuel Blau, Evan Spotte-Smith"
 __copyright__ = "Copyright 2018, The Materials Project"
@@ -663,6 +665,8 @@ class FrequencyFlatteningOptimizeFW(Firework):
                  max_molecule_perturb_scale=0.3,
                  linked=False,
                  freq_before_opt=False,
+                 perturb_geometry=False,
+                 mode=None,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -704,6 +708,10 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 calculation before any opt/ts searches to improve understanding
                 of the local potential energy surface. Only use this option if
                 linked=True.
+            perturb_geometry (bool): If True (default False), then modify the input geometry by some
+                translation matrix (N x 3, where N is the number of atoms) before optimizing.
+            mode (np.ndarray): If not None (default), then perturb the geometry by this matrix.
+                This will be ignored if perturb_geometry is False.
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
             **kwargs: Other kwargs that are passed to Firework.__init__.
@@ -714,6 +722,15 @@ class FrequencyFlatteningOptimizeFW(Firework):
         output_file = "mol.qout"
 
         t = list()
+
+        if perturb_geometry:
+            t.append(PerturbGeometry(
+                molecule=molecule,
+                mode=mode))
+
+            # Make sure that subsequent firetasks use the perturbed Molecule
+            molecule = None
+
         if freq_before_opt:
             t.append(
                 WriteInputFromIOSet(
@@ -769,6 +786,9 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                  max_molecule_perturb_scale=0.3,
                  linked=False,
                  freq_before_opt=False,
+                 perturb_geometry=False,
+                 mode=None,
+                 scale=1,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -810,6 +830,11 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                 calculation before any opt/ts searches to improve understanding
                 of the local potential energy surface. Only use this option if
                 linked=True.
+            perturb_geometry (bool): If True (default False), then modify the input geometry by some
+                translation matrix (N x 3, where N is the number of atoms) before optimizing.
+            mode (np.ndarray): If not None (default), then perturb the geometry by this matrix.
+                This will be ignored if perturb_geometry is False.
+            scale (float): Scaling factor for the geometry perturbation.
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
             **kwargs: Other kwargs that are passed to Firework.__init__.
@@ -824,6 +849,16 @@ class FrequencyFlatteningTransitionStateFW(Firework):
             runs.insert(0, "freq_pre")
 
         t = list()
+
+        if perturb_geometry:
+            t.append(PerturbGeometry(
+                molecule=molecule,
+                mode=mode,
+                scale=scale))
+
+            # Make sure that subsequent firetasks use the perturbed Molecule
+            molecule = None
+
         if freq_before_opt:
             t.append(
                 WriteInputFromIOSet(
