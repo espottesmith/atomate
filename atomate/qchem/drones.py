@@ -326,6 +326,21 @@ class QChemDrone(AbstractDrone):
                                 d["state"] = "unsuccessful" # then the flattening was unsuccessful
                         if final_energy > orig_energy:
                             d["warnings"]["energy_increased"] = True
+                elif d["special_run_type"] == "ts_frequency_flattener":
+                    if d["state"] == "successful":
+                        orig_num_neg_freq = sum(1 for freq in d["calcs_reversed"][-2]["frequencies"] if freq < 0)
+                        orig_energy = d_calc_init["final_energy"]
+                        final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
+                        final_energy = d["calcs_reversed"][1]["final_energy"]
+                        d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
+                        if final_num_neg_freq != 1: # If a negative frequency remains,
+                            # and it's too large to ignore,
+                            if final_num_neg_freq > 2 or abs(d["output"]["frequencies"][0]) >= 15.0:
+                                d["state"] = "unsuccessful" # then the flattening was unsuccessful
+                            elif final_num_neg_freq == 0:
+                                d["state"] = "unsuccessful"
+                        if final_energy > orig_energy:
+                            d["warnings"]["energy_increased"] = True
 
                 elif d["special_run_type"] == "berny_optimization":
                     logfiles = [f for f in os.listdir(dir_name)
