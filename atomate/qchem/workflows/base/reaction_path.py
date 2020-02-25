@@ -28,7 +28,7 @@ def get_workflow_reaction_path(molecule,
                                max_cores=">>max_cores<<",
                                multimode=">>multimode<<",
                                qchem_input_params=None,
-                               name="ts_search",
+                               name="reaction_path",
                                db_file=">>db_file<<",
                                **kwargs):
     """
