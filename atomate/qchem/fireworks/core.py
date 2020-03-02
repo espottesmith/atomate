@@ -667,6 +667,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                  freq_before_opt=False,
                  perturb_geometry=False,
                  mode=None,
+                 scale=1.0,
                  db_file=None,
                  parents=None,
                  **kwargs):
@@ -712,6 +713,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
                 translation matrix (N x 3, where N is the number of atoms) before optimizing.
             mode (np.ndarray): If not None (default), then perturb the geometry by this matrix.
                 This will be ignored if perturb_geometry is False.
+            scale (float): Scaling factor for perturbation
             db_file (str): Path to file specifying db credentials to place output parsing.
             parents ([Firework]): Parents of this particular Firework.
             **kwargs: Other kwargs that are passed to Firework.__init__.
@@ -726,7 +728,8 @@ class FrequencyFlatteningOptimizeFW(Firework):
         if perturb_geometry:
             t.append(PerturbGeometry(
                 molecule=molecule,
-                mode=mode))
+                mode=mode,
+                scale=scale))
 
             # Make sure that subsequent firetasks use the perturbed Molecule
             molecule = None

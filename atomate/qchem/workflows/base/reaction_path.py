@@ -24,6 +24,7 @@ logger = get_logger(__name__)
 
 
 def get_workflow_reaction_path(molecule,
+                               scale=1.0,
                                qchem_cmd=">>qchem_cmd<<",
                                max_cores=">>max_cores<<",
                                multimode=">>multimode<<",
@@ -40,6 +41,7 @@ def get_workflow_reaction_path(molecule,
 
     Args:
         molecule (Molecule): pymatgen Molecule representing the TS guess.
+        scale (float): Scaling factor for molecular perturbations.
         qchem_cmd (str): Command to run QChem.
         max_cores (int): Maximum number of cores to parallelize over.
             Defaults to 32.
@@ -89,7 +91,7 @@ def get_workflow_reaction_path(molecule,
         multimode=multimode,
         qchem_input_params=qchem_input_params,
         perturb_geometry=True,
-        scale=1.0,
+        scale=1.0 * scale,
         linked=True,
         db_file=db_file,
         parents=[fw1])
@@ -101,7 +103,7 @@ def get_workflow_reaction_path(molecule,
         multimode=multimode,
         qchem_input_params=qchem_input_params,
         perturb_geometry=True,
-        scale=-1.0,
+        scale=-1.0 * scale,
         linked=True,
         db_file=db_file,
         parents=[fw1])
