@@ -90,7 +90,7 @@ class PerturbGeometry(FiretaskBase):
         mol_copy = copy.deepcopy(mol)
 
         for ii in range(len(mol)):
-            vec = mode[ii]
+            vec = np.array(mode[ii])
             mol_copy.translate_sites(indices=[ii], vector=vec * self.get("scale", 1))
 
         update_spec = {"prev_calc_molecule": mol_copy}

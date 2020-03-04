@@ -82,7 +82,7 @@ def get_workflow_reaction_path(molecule,
     # Find the transition state
     fw1 = FrequencyFlatteningTransitionStateFW(
         molecule=molecule,
-        name="ff_ts_search",
+        name="ff_ts",
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
