@@ -103,7 +103,7 @@ def get_workflow_reaction_path(molecule,
         parents=[fw1])
 
     fw3 = FrequencyFlatteningOptimizeFW(
-        name="perturb backwards",
+        name="perturb_backwards",
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -190,7 +190,7 @@ def get_workflow_reaction_path_with_ts(molecule,
 
     fw2 = FrequencyFlatteningOptimizeFW(
         molecule=molecule,
-        name="perturb backwards",
+        name="perturb_backwards",
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
