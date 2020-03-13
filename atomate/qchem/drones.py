@@ -9,9 +9,11 @@ import json
 import glob
 import traceback
 from itertools import chain
+import copy
 
 from monty.io import zopen
 from monty.json import jsanitize
+from pymatgen.core import Molecule
 from pymatgen.io.qchem.outputs import (QCOutput,
                                        BernyLogParser,
                                        check_for_structure_changes)
@@ -269,13 +271,33 @@ class QChemDrone(AbstractDrone):
                     d["output"]["string_total_gradient_magnitude_iterations"] = d_calc_final["string_total_gradient_magnitude_iterations"]
                     d["output"]["string_max_relative_energy"] = d_calc_final["string_max_relative_energy"]
 
+            opt_trajectory = []
+            calcs = copy.deepcopy(d["calcs_reversed"])
+            calcs.reverse()
+            for calc in calcs:
+                job_type = calc["input"]["rem"]["job_type"]
+                if job_type == "opt" or job_type == "optimization":
+                    for ii,geom in enumerate(calc["geometries"]):
+                        site_properties = {"Mulliken":calc["Mulliken"][ii]}
+                        if "RESP" in calc:
+                            site_properties["RESP"] = calc["RESP"][ii]
+                        mol = Molecule(
+                            species=calc["species"],
+                            coords=geom,
+                            charge=calc["charge"],
+                            spin_multiplicity=calc["multiplicity"],
+                            site_properties=site_properties)
+                        traj_entry = {"molecule":mol}
+                        traj_entry["energy"] = calc["energy_trajectory"][ii]
+                        opt_trajectory.append(traj_entry)
+            if opt_trajectory != []:
+                d["opt_trajectory"] = opt_trajectory
+
             if "final_energy" not in d["output"]:
                 if d_calc_final["final_energy"] != None:
                     d["output"]["final_energy"] = d_calc_final["final_energy"]
                 else:
                     d["output"]["final_energy"] = d_calc_final["SCF"][-1][-1][0]
-                # else:
-                #     print(d_calc_final)
 
             if d_calc_final["completion"]:
                 total_cputime = 0.0
