@@ -11,7 +11,8 @@ from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.io.qchem.utils import map_atoms_reaction
 
 from fireworks import Firework
-
+import os
+import copy
 from atomate.qchem.firetasks.parse_outputs import QChemToDb
 from atomate.qchem.firetasks.run_calc import RunQChemCustodian
 from atomate.qchem.firetasks.write_inputs import WriteInputFromIOSet
@@ -1147,7 +1148,7 @@ class CubeAndCritic2FW(Firework):
             **kwargs: Other kwargs that are passed to Firework.__init__.
         """
 
-        qchem_input_params = qchem_input_params or {}
+        qchem_input_params = copy.deepcopy(qchem_input_params) or {}
         qchem_input_params["plot_cubes"] = True
         input_file="mol.qin"
         output_file="mol.qout"
