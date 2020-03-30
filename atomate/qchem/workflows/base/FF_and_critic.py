@@ -1,7 +1,9 @@
 # coding: utf-8
 
 from fireworks import Workflow
-from atomate.qchem.fireworks.core import FrequencyFlatteningOptimizeFW, CubeAndCritic2FW
+from atomate.qchem.fireworks.core import (FrequencyFlatteningOptimizeFW,
+                                          FrequencyFlatteningTransitionStateFW,
+                                          CubeAndCritic2FW)
 from atomate.utils.utils import get_logger
 
 __author__ = "Samuel Blau"
@@ -44,22 +46,23 @@ def get_wf_FFopt_and_critic(molecule,
 
 
 def get_wf_FFTSopt_and_critic(molecule,
-                            suffix,
-                            qchem_input_params=None,
-                            db_file=">>db_file<<",
-                            **kwargs):
+                              suffix,
+                              qchem_input_params=None,
+                              db_file=">>db_file<<",
+                              **kwargs):
     """
     """
 
     # FFopt
-    fw1 = FrequencyFlatteningOptimizeFW(
-         molecule=molecule,
-         name="{}:{}".format(molecule.composition.alphabetical_formula, "FFopt_" + suffix),
-         qchem_cmd=">>qchem_cmd<<",
-         max_cores=">>max_cores<<",
-         qchem_input_params=qchem_input_params,
-         linked=True,
-         db_file=db_file
+    fw1 = FrequencyFlatteningTransitionStateFW(
+        molecule=molecule,
+        name="{}:{}".format(molecule.composition.alphabetical_formula, "FFTSopt_" + suffix),
+        qchem_cmd=">>qchem_cmd<<",
+        max_cores=">>max_cores<<",
+        qchem_input_params=qchem_input_params,
+        linked=True,
+        freq_before_opt=True,
+        db_file=db_file
     )
 
     # Critic
@@ -72,6 +75,6 @@ def get_wf_FFTSopt_and_critic(molecule,
          parents=fw1)
     fws = [fw1, fw2]
 
-    wfname = "{}:{}".format(molecule.composition.alphabetical_formula, "FFopt_CC2_WF_" + suffix)
+    wfname = "{}:{}".format(molecule.composition.alphabetical_formula, "FFTSopt_CC2_WF_" + suffix)
 
     return Workflow(fws, name=wfname, **kwargs)

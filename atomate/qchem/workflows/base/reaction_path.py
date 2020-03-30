@@ -8,7 +8,8 @@ from __future__ import absolute_import, division, print_function, \
 
 from fireworks import Workflow
 from atomate.qchem.fireworks.core import (FrequencyFlatteningTransitionStateFW,
-                                          FrequencyFlatteningOptimizeFW)
+                                          FrequencyFlatteningOptimizeFW,
+                                          CubeAndCritic2FW)
 from atomate.utils.utils import get_logger
 
 __author__ = "Evan Spotte-Smith"
@@ -202,6 +203,115 @@ def get_workflow_reaction_path_with_ts(molecule,
         db_file=db_file)
 
     fws = [fw1, fw2]
+
+    wfname = "{}:{}".format(molecule.composition.reduced_formula, name)
+
+    return Workflow(fws, name=wfname, **kwargs)
+
+
+def get_workflow_reaction_path_with_ts_and_critic(molecule,
+                                                  mode,
+                                                  scale=1.0,
+                                                  qchem_cmd=">>qchem_cmd<<",
+                                                  max_cores=">>max_cores<<",
+                                                  multimode=">>multimode<<",
+                                                  qchem_input_params=None,
+                                                  name="reaction_path_with_ts",
+                                                  db_file=">>db_file<<",
+                                                  **kwargs):
+    """
+
+    Firework 1: Perturb the given molecule along the given frequency
+                mode in the forwards direction,
+                run FF_opt QCJob,
+                parse directory, and insert into db
+    Firework 2: Take the optimized geometry from Firework 1, then run a single-
+                point job to get a grid of the electron density, to be used with
+                Critic2 to determine bonding.
+    Firework 3: Perturb the given molecule along the given frequency
+                mode in the reverse direction,
+                run FF_opt QCJob,
+                parse directory, and insert into db
+    Firework 4: Take the optimized geometry from Firework 3, then run a single-
+                point job to get a grid of the electron density, to be used with
+                Critic2 to determine bonding.
+
+    Args:
+        molecule (Molecule): pymatgen Molecule representing the TS.
+        mode (np.ndarray): a matrix used to perturb the molecule
+        scale (float): Scaling factor for molecular perturbations.
+        qchem_cmd (str): Command to run QChem.
+        max_cores (int): Maximum number of cores to parallelize over.
+            Defaults to 32.
+        qchem_input_params (dict): Specify kwargs for instantiating the input set parameters.
+                                   Basic uses would be to modify the default inputs of the set,
+                                   such as dft_rung, basis_set, pcm_dielectric, scf_algorithm,
+                                   or max_scf_cycles. See pymatgen/io/qchem/sets.py for default
+                                   values of all input parameters. For instance, if a user wanted
+                                   to use a more advanced DFT functional, include a pcm with a
+                                   dielectric of 30, and use a larger basis, the user would set
+                                   qchem_input_params = {"dft_rung": 5, "pcm_dielectric": 30,
+                                   "basis_set": "6-311++g**"}. However, more advanced customization
+                                   of the input is also possible through the overwrite_inputs key
+                                   which allows the user to directly modify the rem, pcm, smd, and
+                                   solvent dictionaries that QChemDictSet passes to inputs.py to
+                                   print an actual input file. For instance, if a user wanted to
+                                   set the sym_ignore flag in the rem section of the input file
+                                   to true, then they would set qchem_input_params = {"overwrite_inputs":
+                                   "rem": {"sym_ignore": "true"}}. Of course, overwrite_inputs
+                                   could be used in conjuction with more typical modifications,
+                                   as seen in the test_double_FF_opt workflow test.
+        name (string): name for the Workflow
+        db_file (str): path to file containing the database credentials.
+        kwargs (keyword arguments): additional kwargs to be passed to Workflow
+
+    Returns:
+        Workflow
+    """
+
+    fw1 = FrequencyFlatteningOptimizeFW(
+        molecule=molecule,
+        name="perturb_forwards",
+        qchem_cmd=qchem_cmd,
+        max_cores=max_cores,
+        multimode=multimode,
+        qchem_input_params=qchem_input_params,
+        perturb_geometry=True,
+        scale=1.0 * scale,
+        mode=mode,
+        linked=True,
+        db_file=db_file)
+
+    fw2 = CubeAndCritic2FW(
+         name="perturb_forwards_CC2",
+         qchem_cmd=">>qchem_cmd<<",
+         max_cores=">>max_cores<<",
+         qchem_input_params=qchem_input_params,
+         db_file=db_file,
+         parents=fw1)
+
+    fw3 = FrequencyFlatteningOptimizeFW(
+        molecule=molecule,
+        name="perturb_backwards",
+        qchem_cmd=qchem_cmd,
+        max_cores=max_cores,
+        multimode=multimode,
+        qchem_input_params=qchem_input_params,
+        perturb_geometry=True,
+        scale=-1.0 * scale,
+        mode=mode,
+        linked=True,
+        db_file=db_file)
+
+    fw4 = CubeAndCritic2FW(
+         name="perturb_backwards_CC2",
+         qchem_cmd=">>qchem_cmd<<",
+         max_cores=">>max_cores<<",
+         qchem_input_params=qchem_input_params,
+         db_file=db_file,
+         parents=fw3)
+
+    fws = [fw1, fw2, fw3, fw4]
 
     wfname = "{}:{}".format(molecule.composition.reduced_formula, name)
 
