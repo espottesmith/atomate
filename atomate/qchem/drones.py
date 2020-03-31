@@ -331,7 +331,10 @@ class QChemDrone(AbstractDrone):
 
                 elif d["special_run_type"] == "ts_frequency_flattener":
                     if d["state"] == "successful":
-                        orig_num_neg_freq = sum(1 for freq in d["calcs_reversed"][-2]["frequencies"] if freq < 0)
+                        for calc in d["calcs_reversed"][::-1]:
+                            if "frequencies" in calc:
+                                orig_num_neg_freq = sum(1 for freq in calc["frequencies"] if freq < 0)
+                                break
                         orig_energy = d_calc_init["final_energy"]
                         final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
                         final_energy = d["calcs_reversed"][1]["final_energy"]
