@@ -331,20 +331,29 @@ class QChemDrone(AbstractDrone):
 
                 elif d["special_run_type"] == "ts_frequency_flattener":
                     if d["state"] == "successful":
+                        orig_num_neg_freq = None
                         for calc in d["calcs_reversed"][::-1]:
                             if "frequencies" in calc:
                                 orig_num_neg_freq = sum(1 for freq in calc["frequencies"] if freq < 0)
                                 break
-                        orig_energy = d_calc_init["final_energy"]
+                        orig_energy = None
+                        for calc in d["calcs_reversed"][::-1]:
+                            if "final_energy" in calc:
+                                orig_energy = calc["final_energy"]
+                                break
                         final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
                         final_energy = d["calcs_reversed"][1]["final_energy"]
-                        d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
+                        if orig_num_neg_freq is not None:
+                            d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
+                        else:
+                            d["num_frequencies_flattened"] = 0
                         if final_num_neg_freq > 1: # If a negative frequency remains,
                             # and it's too large to ignore,
                             if final_num_neg_freq > 2 or abs(d["output"]["frequencies"][1]) >= 15.0:
                                 d["state"] = "unsuccessful"  # then the flattening was unsuccessful
-                        if final_energy > orig_energy:
-                            d["warnings"]["energy_increased"] = True
+                        if orig_energy is not None:
+                            if final_energy > orig_energy:
+                                d["warnings"]["energy_increased"] = True
 
                 elif d["special_run_type"] == "berny_optimization":
                     logfiles = [f for f in os.listdir(dir_name)
