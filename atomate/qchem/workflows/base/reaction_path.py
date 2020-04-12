@@ -19,7 +19,7 @@ __maintainer__ = "Evan Spotte-Smith"
 __email__ = "espottesmith@gmail.com"
 __status__ = "Alpha"
 __date__ = "February 2020"
-__credits__ = "Sam Blau"
+__credits__ = "Sam Blau, Alex Epstein, Trevor Seguin"
 
 logger = get_logger(__name__)
 

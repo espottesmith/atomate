@@ -147,8 +147,8 @@ class RunQChemCustodian(FiretaskBase):
 
         handler_groups = {
             "default": [
-                QChemErrorHandler(input_file=input_file, output_file=output_file),
-                QChemOptErrorHandler(input_file=input_file, output_file=output_file)
+                QChemOptErrorHandler(input_file=input_file, output_file=output_file),
+                QChemErrorHandler(input_file=input_file, output_file=output_file)
             ],
             "no_opt": [
                 QChemErrorHandler(input_file=input_file, output_file=output_file)
