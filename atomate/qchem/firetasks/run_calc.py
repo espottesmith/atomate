@@ -11,7 +11,7 @@ import subprocess
 from pymatgen.io.qchem.inputs import QCInput
 
 from custodian import Custodian
-from custodian.qchem.handlers import QChemErrorHandler, QChemOptErrorHandler
+from custodian.qchem.handlers import QChemErrorHandler
 from custodian.qchem.jobs import QCJob
 
 from fireworks import explicit_serialize, FiretaskBase
@@ -147,10 +147,6 @@ class RunQChemCustodian(FiretaskBase):
 
         handler_groups = {
             "default": [
-                QChemOptErrorHandler(input_file=input_file, output_file=output_file),
-                QChemErrorHandler(input_file=input_file, output_file=output_file)
-            ],
-            "no_opt": [
                 QChemErrorHandler(input_file=input_file, output_file=output_file)
             ],
             "no_handler": []
@@ -218,10 +214,7 @@ class RunQChemCustodian(FiretaskBase):
             raise ValueError("Unsupported job type: {}".format(job_type))
 
         # construct handlers
-        if optimizer_params is None:
-            handlers = handler_groups[self.get("handler_group", "default")]
-        else:
-            handlers = handler_groups[self.get("handler_group", "no_opt")]
+        handlers = handler_groups[self.get("handler_group", "default")]
 
         c = Custodian(
             handlers,
