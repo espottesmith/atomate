@@ -44,8 +44,7 @@ class GSMCalcDb(CalcDb):
             existing indexes.
         """
         _indices = indexes or [
-            "formula_pretty", "formula_anonymous", "dir_name", "smiles",
-            "last_updated"
+            "formula_pretty", "dir_name", "last_updated"
         ]
         self.collection.create_index(
             "task_id", unique=True, background=background)

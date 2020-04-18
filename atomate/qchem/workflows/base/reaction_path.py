@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 
 
 def get_workflow_reaction_path(molecule,
+                               suffix,
                                scale=1.0,
                                qchem_cmd=">>qchem_cmd<<",
                                max_cores=">>max_cores<<",
@@ -50,6 +51,8 @@ def get_workflow_reaction_path(molecule,
 
     Args:
         molecule (Molecule): pymatgen Molecule representing the TS guess.
+        suffix (str): String tag that will be appended to the end of the
+            FW names.
         scale (float): Scaling factor for molecular perturbations.
         qchem_cmd (str): Command to run QChem.
         max_cores (int): Maximum number of cores to parallelize over.
@@ -83,7 +86,7 @@ def get_workflow_reaction_path(molecule,
     # Find the transition state
     fw1 = FrequencyFlatteningTransitionStateFW(
         molecule=molecule,
-        name="ff_ts",
+        name="{}:ff_ts{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -92,7 +95,7 @@ def get_workflow_reaction_path(molecule,
         db_file=db_file)
 
     fw2 = FrequencyFlatteningOptimizeFW(
-        name="perturb_forwards",
+        name="{}:perturb_forwards{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -104,7 +107,7 @@ def get_workflow_reaction_path(molecule,
         parents=[fw1])
 
     fw3 = FrequencyFlatteningOptimizeFW(
-        name="perturb_backwards",
+        name="{}:perturb_backwards{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -117,13 +120,14 @@ def get_workflow_reaction_path(molecule,
 
     fws = [fw1, fw2, fw3]
 
-    wfname = "{}:{}".format(molecule.composition.reduced_formula, name)
+    wfname = "{}:{}".format(molecule.composition.alphabetical_formula, name)
 
     return Workflow(fws, name=wfname, **kwargs)
 
 
 def get_workflow_reaction_path_with_ts(molecule,
                                        mode,
+                                       suffix,
                                        scale=1.0,
                                        qchem_cmd=">>qchem_cmd<<",
                                        max_cores=">>max_cores<<",
@@ -178,7 +182,7 @@ def get_workflow_reaction_path_with_ts(molecule,
 
     fw1 = FrequencyFlatteningOptimizeFW(
         molecule=molecule,
-        name="perturb_forwards",
+        name="{}:perturb_forwards{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -191,7 +195,7 @@ def get_workflow_reaction_path_with_ts(molecule,
 
     fw2 = FrequencyFlatteningOptimizeFW(
         molecule=molecule,
-        name="perturb_backwards",
+        name="{}:perturb_backwards{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -204,13 +208,14 @@ def get_workflow_reaction_path_with_ts(molecule,
 
     fws = [fw1, fw2]
 
-    wfname = "{}:{}".format(molecule.composition.reduced_formula, name)
+    wfname = "{}:{}".format(molecule.composition.alphabetical_formula, name)
 
     return Workflow(fws, name=wfname, **kwargs)
 
 
 def get_workflow_reaction_path_with_ts_and_critic(molecule,
                                                   mode,
+                                                  suffix,
                                                   scale=1.0,
                                                   qchem_cmd=">>qchem_cmd<<",
                                                   max_cores=">>max_cores<<",
@@ -271,7 +276,7 @@ def get_workflow_reaction_path_with_ts_and_critic(molecule,
 
     fw1 = FrequencyFlatteningOptimizeFW(
         molecule=molecule,
-        name="perturb_forwards",
+        name="{}:perturb_forwards{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -283,7 +288,7 @@ def get_workflow_reaction_path_with_ts_and_critic(molecule,
         db_file=db_file)
 
     fw2 = CubeAndCritic2FW(
-         name="perturb_forwards_CC2",
+         name="{}:perturb_forwards_CC2{}".format(molecule.composition.alphabetical_formula, suffix),
          qchem_cmd=">>qchem_cmd<<",
          max_cores=">>max_cores<<",
          qchem_input_params=qchem_input_params,
@@ -292,7 +297,7 @@ def get_workflow_reaction_path_with_ts_and_critic(molecule,
 
     fw3 = FrequencyFlatteningOptimizeFW(
         molecule=molecule,
-        name="perturb_backwards",
+        name="{}:perturb_backwards{}".format(molecule.composition.alphabetical_formula, suffix),
         qchem_cmd=qchem_cmd,
         max_cores=max_cores,
         multimode=multimode,
@@ -304,7 +309,7 @@ def get_workflow_reaction_path_with_ts_and_critic(molecule,
         db_file=db_file)
 
     fw4 = CubeAndCritic2FW(
-         name="perturb_backwards_CC2",
+         name="{}:perturb_backwards_CC2{}".format(molecule.composition.alphabetical_formula, suffix),
          qchem_cmd=">>qchem_cmd<<",
          max_cores=">>max_cores<<",
          qchem_input_params=qchem_input_params,
@@ -313,6 +318,6 @@ def get_workflow_reaction_path_with_ts_and_critic(molecule,
 
     fws = [fw1, fw2, fw3, fw4]
 
-    wfname = "{}:{}".format(molecule.composition.reduced_formula, name)
+    wfname = "{}:{}".format(molecule.composition.alphabetical_formula, name)
 
     return Workflow(fws, name=wfname, **kwargs)
