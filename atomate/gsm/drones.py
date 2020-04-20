@@ -12,10 +12,17 @@ import copy
 
 from monty.io import zopen
 from monty.json import jsanitize
-from pymatgen.io.qchem.outputs import XTBOutput
-from pymatgen.io.xtb.inputs import XTBInput
+
 from pymatgen.apps.borg.hive import AbstractDrone
 from pymatgen.io.babel import BabelMolAdaptor
+from pymatgen.io.qchem import QCInput
+from pymatgen.io.qchem import QCOutput
+from pymatgen.io.gsm.inputs import (QCTemplate, GSMIsomerInput,
+                                    parse_multi_xyz)
+from pymatgen.io.gsm.outputs import (GSMOutput,
+                                     GSMOptimizedStringParser,
+                                     GSMInternalCoordinateDataParser)
+from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.analysis.fragmenter import metal_edge_extender
@@ -41,158 +48,148 @@ class GSMDrone(AbstractDrone):
     A drone to parse calculations from pyGSM and insert an organized, searchable entry into the database.
     """
 
-    __version__ = atomate_version  # note: the version is inserted into the task doc
+    # note: the version is inserted into the task doc
+    __version__ = atomate_version
 
     # Schema def of important keys and sub-keys; used in validation
     schema = {
         "root": {
-            "dir_name", "string_id", "input", "output", "calcs_reversed",
-            "smiles", "walltime", "cputime", "formula_pretty",
-            "formula_anonymous", "chemsys", "pointgroup", "formula_alphabetical"
+            "dir_name", "input", "output", "smiles", "walltime", "cputime",
+            "formula_pretty", "formula_anonymous", "chemsys", "pointgroup",
+            "formula_alphabetical"
         },
         "input": {"initial_reactants", "initial_products", "mode", "num_nodes",
                   "ends_fixed"},
-        "output": {"string_nodes", "ts_guess", "ts_energy"}
+        "output": {"string_nodes", "ts_guess", "ts_energy", "absolute_ts_energy"}
     }
 
-    def __init__(self, suffix="", additional_fields=None):
+    def __init__(self, additional_fields=None):
         """
         Initialize a GSM drone to parse pyGSM calculations
         Args:
-            suffix (str): File suffix for files associated with this job
             additional_fields (dict): dictionary of additional fields to add to output document
         """
-        self.run = suffix
+
         self.additional_fields = additional_fields or dict()
 
-    def assimilate(self, path, input_file, output_file, multirun, extra_files=None):
+    def assimilate(self, path, molecule_file="input.xyz", template_file="qin",
+                   output_file="gsm.out", isomers_file=None):
         """
         Parses qchem input and output files and insert the result into the db.
 
         Args:
-            path (str): Path to the directory containing output file
-            input_file (str): base name of the input file(s)
-            output_file (str): base name of the output file(s)
-            multirun (bool): Whether the job to parse includes multiple
-                             calculations in one input / output pair.
-            extra_files (list): list of filenames which, in addition to the input and output
-                                     files, must be present. This is most relevant for string
-                                     methods (ex: FSM), where multiple outputs are generated,
-                                     and for jobs using the Berny optimizer, where
-                                     optimization log files are produced.
+            path (str): Path to the directory containing output file.
+            molecule_file (str): Name of the input molecule geometry file.
+                Default is "input.xyz".
+            template_file (str): Name of the input QChem template file.
+                Default is "qin".
+            output_file (str): Name of the pyGSM output file. Default is
+                "gsm.out".
+            isomers_file (str): For single-ended calculations, this is the
+                name of the isomers file that defines what coordinates to
+                vary. Default is None; however, note that this should be
+                provided for single-ended calculations.
 
         Returns:
             d (dict): a task dictionary
         """
         logger.info("Getting task doc for base dir :{}".format(path))
-        qcinput_files = self.filter_files(path, file_pattern=input_file)
-        qcoutput_files = self.filter_files(path, file_pattern=output_file)
-        if len(qcinput_files) != len(qcoutput_files):
-            if len(qcinput_files) > len(qcoutput_files):
-                if list(qcinput_files.items())[0][0] != "orig":
-                    raise AssertionError("Can only have inequal number of input and output files when there is a saved copy of the original input!")
-            else:
-                raise AssertionError("Inequal number of input and output files!")
-        # Check that all needed files are present in the path
-        if extra_files is not None:
-            in_path = os.listdir(path)
-            for filename in extra_files:
-                # Generally, all extra_files are required
-                if filename not in in_path:
-                    raise ValueError("Additional file {} not found!".format(filename))
-        if len(qcinput_files) > 0 and len(qcoutput_files) > 0:
-            d = self.generate_doc(path, qcinput_files, qcoutput_files,
-                                  multirun, extra_files=extra_files)
-            self.post_process(path, d)
+
+        all_files = os.listdir(path)
+        if "scratch" in all_files:
+            all_scratch_files = os.listdir(os.path.join(path, "scratch"))
+
+        # Populate important input and output files
+        mol_file = None
+        temp_file = None
+        out_file = None
+        iso_file = None
+        ic_file = None
+        opt_file = None
+        for file in all_files:
+            if isomers_file is not None:
+                if file == isomers_file and iso_file is None:
+                    iso_file = os.path.join(path, file)
+                    continue
+
+            if file == molecule_file and mol_file is None:
+                mol_file = os.path.join(path, file)
+            elif file == template_file and temp_file is None:
+                temp_file = os.path.join(path, file)
+            elif file == output_file and out_file is None:
+                out_file = os.path.join(path, file)
+            elif "IC_data" in file and ic_file is None:
+                ic_file = os.path.join(path, file)
+            elif "opt_converged" in file and opt_file is None:
+                opt_file = os.path.join(path, file)
+
+        # Only check scratch directory if we're missing files
+        any_needed_none = any([e is None for e in [mol_file, temp_file,
+                                                   out_file, ic_file,
+                                                   opt_file]])
+        iso_needed_none = isomers_file is not None and iso_file is None
+
+        if any_needed_none or iso_needed_none:
+            for file in all_scratch_files:
+                if isomers_file is not None:
+                    if file == isomers_file and iso_file is None:
+                        iso_file = os.path.join(path, "scratch", file)
+                        continue
+
+                if file == molecule_file and mol_file is None:
+                    mol_file = os.path.join(path, "scratch", file)
+                elif file == template_file and temp_file is None:
+                    temp_file = os.path.join(path, "scratch", file)
+                elif file == output_file and out_file is None:
+                    out_file = os.path.join(path, "scratch", file)
+                elif "IC_data" in file and ic_file is None:
+                    ic_file = os.path.join(path, "scratch", file)
+                elif "opt_converged" in file and opt_file is None:
+                    opt_file = os.path.join(path, "scratch", file)
+
+        any_needed_none = any([e is None for e in [mol_file, temp_file,
+                                                   out_file, ic_file,
+                                                   opt_file]])
+        iso_needed_none = isomers_file is not None and iso_file is None
+
+        if not(any_needed_none or iso_needed_none):
+            d = self.generate_doc(path=path, molecule_file=mol_file,
+                                  template_file=temp_file, output_file=out_file,
+                                  isomers_file=iso_file, internal_coordinate_file=ic_file,
+                                  optimized_geom_file=opt_file)
+            self.post_process(d)
         else:
             raise ValueError("Either input or output not found!")
         self.validate_doc(d)
         return jsanitize(d, strict=True, allow_bson=True)
 
-    def filter_files(self, path, file_pattern):
-        """
-        Find the files that match the pattern in the given path and
-        return them in an ordered dictionary. The searched for files are
-        filtered by the run types defined in self.runs.
+    def generate_doc(self, path, molecule_file, template_file, output_file,
+                     isomers_file, internal_coordinate_file,
+                     optimized_geom_file):
 
-        Args:
-            path (string): path to the folder
-            file_pattern (string): base files to be searched for
-
-        Returns:
-            OrderedDict of the names of the files to be processed further.
-            The key is set from list of run types: self.runs
-        """
-        processed_files = OrderedDict()
-        files = os.listdir(path)
-        for r in self.runs:
-            # try subfolder schema
-            if r in files:
-                for f in os.listdir(os.path.join(path, r)):
-                    if fnmatch(f, "{}*".format(file_pattern)):
-                        processed_files[r] = os.path.join(r, f)
-            # try extension schema
-            else:
-                for f in files:
-                    if fnmatch(f, "{}.{}*".format(file_pattern, r)):
-                        processed_files[r] = f
-        if len(processed_files) == 0 or (len(processed_files)==1 and "orig" in processed_files):
-            # get any matching file from the folder
-            for f in files:
-                if fnmatch(f, "{}*".format(file_pattern)):
-                    processed_files["standard"] = f
-        return processed_files
-
-    def generate_doc(self, dir_name, qcinput_files, qcoutput_files, multirun,
-                     extra_files=None):
-
-        if extra_files is None:
-            extra_files = list()
         try:
-            fullpath = os.path.abspath(dir_name)
-            d = jsanitize(self.additional_fields, strict=True)
+            fullpath = os.path.abspath(path)
+            d = dict()
+
             d["schema"] = {
                 "code": "atomate",
-                "version": QChemDrone.__version__
+                "version": GSMDrone.__version__
             }
+
             d["dir_name"] = fullpath
 
-            # If a saved "orig" input file is present, parse it incase the error handler made changes
-            # to the initial input molecule or rem params, which we might want to filter for later
-            if len(qcinput_files) > len(qcoutput_files):
-                orig_input = QCInput.from_file(os.path.join(dir_name, qcinput_files.pop("orig")))
-                d["orig"] = {}
-                if isinstance(orig_input.molecule, dict):
-                    mol_dict = dict()
-                    for key, molecules in orig_input.molecule.items():
-                        mol_dict[key] = list()
-                        for molecule in molecules:
-                            mol_dict[key].append(molecule.as_dict())
-                    d["orig"]["molecule"] = mol_dict
-                    sum_charge = sum([e.charge for e in orig_input.molecule.get("products")])
-                    d["orig"]["molecule"]["charge"] = sum_charge
-                else:
-                    d["orig"]["molecule"] = orig_input.molecule.as_dict()
-                    d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
-                d["orig"]["rem"] = orig_input.rem
-                d["orig"]["opt"] = orig_input.opt
-                d["orig"]["pcm"] = orig_input.pcm
-                d["orig"]["solvent"] = orig_input.solvent
-                d["orig"]["smx"] = orig_input.smx
+            # TODO: Consider error handlers
+            # Include an "orig" section to the doc
 
-            if multirun:
-                d["calcs_reversed"] = self.process_qchem_multirun(
-                    dir_name, qcinput_files, qcoutput_files)
-            else:
-                d["calcs_reversed"] = [
-                    self.process_qchemrun(dir_name, taskname,
-                                          qcinput_files.get(taskname),
-                                          output_filename)
-                    for taskname, output_filename in qcoutput_files.items()
-                ]
+            # Parse all relevant files
+            initial_mol = parse_multi_xyz(molecule_file)
+            temp_file = QCTemplate.from_file(template_file)
+            iso_file = GSMIsomerInput.from_file(isomers_file)
+            out_file = GSMOutput(output_file)
+            ic_file = GSMInternalCoordinateDataParser(internal_coordinate_file)
+            opt_file = GSMOptimizedStringParser()
 
-            # reverse the calculations data order so newest calc is first
-            d["calcs_reversed"].reverse()
+            #TODO: YOU ARE HERE
 
             d["structure_change"] = []
             d["warnings"] = {}
@@ -410,38 +407,6 @@ class GSMDrone(AbstractDrone):
         d["input"]["smx"] = temp_input.smx
         d["task"] = {"type": taskname, "name": taskname}
         return d
-
-    @staticmethod
-    def process_qchem_multirun(dir_name, input_files, output_files):
-        """
-        Process a QChem run which is known to include multiple calculations
-        in a single input/output pair.
-        """
-        if len(input_files) != 1:
-            raise ValueError(
-                "ERROR: The drone can only process a directory containing a single input/output pair when each include multiple calculations."
-            )
-        else:
-            for key in input_files:
-                to_return = []
-                qchem_input_file = os.path.join(dir_name, input_files.get(key))
-                qchem_output_file = os.path.join(dir_name,
-                                                 output_files.get(key))
-                multi_out = QCOutput.multiple_outputs_from_file(
-                    QCOutput, qchem_output_file, keep_sub_files=False)
-                multi_in = QCInput.from_multi_jobs_file(qchem_input_file)
-                for ii, out in enumerate(multi_out):
-                    d = out.data
-                    d["input"] = {}
-                    d["input"]["molecule"] = multi_in[ii].molecule
-                    d["input"]["rem"] = multi_in[ii].rem
-                    d["input"]["opt"] = multi_in[ii].opt
-                    d["input"]["pcm"] = multi_in[ii].pcm
-                    d["input"]["solvent"] = multi_in[ii].solvent
-                    d["input"]["smx"] = multi_in[ii].smx
-                    d["task"] = {"type": key, "name": "calc" + str(ii)}
-                    to_return.append(d)
-            return to_return
 
     @staticmethod
     def post_process(dir_name, d):

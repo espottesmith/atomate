@@ -22,27 +22,33 @@ __date__ = "04/17/2020"
 __credits__ = "Sam Blau"
 
 
+# TODO: Allow for multiple molecules
+
+
 @explicit_serialize
 class WriteInputFromIOSet(FiretaskBase):
     """
-    Writes QChem Input files from input sets. A dictionary is passed to WriteInputFromIOSet where
-    parameters are given as keys in the dictionary.
+    Writes QChem Input files from input sets. A dictionary is passed to
+        WriteInputFromIOSet where parameters are given as keys in the
+        dictionary.
 
     required_params:
         input_set (QChemDictSet): A QChemDictSet object.
 
     optional_params:
-        molecule (Molecule): Molecule that will be subjected to an electronic structure calculation
-        molecule_file (str): Name of the file for the initial molecule geometry. Defaults to
-            input.xyz.
+        molecules (list of pymatgen Molecule objects): The molecule(s)
+            representing the initial molecular geometry/geometries.
+        molecule_file (str): Name of the file for the initial molecule geometry.
+            Defaults to input.xyz.
         lot_file (str): Name of the pyGSM input file. Defaults to qin
-        write_to_dir (str): Path of the directory where the pyGSM input file will be written.
-            The default is to write to the current working directory
+        write_to_dir (str): Path of the directory where the pyGSM input file
+            will be written. The default is to write to the current working
+            directory.
     """
 
     required_params = ["input_set"]
     optional_params = [
-        "molecule", "molecule_file", "lot_file", "write_to_dir"
+        "molecules", "molecule_file", "lot_file", "write_to_dir"
     ]
 
     def run_task(self, fw_spec):
@@ -58,23 +64,24 @@ class WriteInputFromIOSet(FiretaskBase):
         if fw_spec.get("prev_calc_molecule"):
             prev_calc_mol = fw_spec.get("prev_calc_molecule")
             # if a molecule is also passed as an optional parameter
-            if self.get("molecule"):
-                mol = self.get("molecule")
-                # check if mol and prev_calc_mol are isomorphic
-                mol_graph = MoleculeGraph.with_local_env_strategy(mol,
-                                                                  OpenBabelNN())
-                prev_mol_graph = MoleculeGraph.with_local_env_strategy(prev_calc_mol,
-                                                                       OpenBabelNN())
-                # If they are isomorphic, aka a previous FW has not changed bonding,
-                # then we will use prev_calc_mol. If bonding has changed, we will use mol.
-                if mol_graph.isomorphic_to(prev_mol_graph):
-                    mol = prev_calc_mol
-                else:
-                    print("Not using prev_calc_mol as it is not isomorphic to passed molecule!")
+            if self.get("molecules"):
+                mol = self.get("molecules")
+                if len(mol) == 1:
+                    # check if mol and prev_calc_mol are isomorphic
+                    mol_graph = MoleculeGraph.with_local_env_strategy(mol,
+                                                                      OpenBabelNN())
+                    prev_mol_graph = MoleculeGraph.with_local_env_strategy(prev_calc_mol,
+                                                                           OpenBabelNN())
+                    # If they are isomorphic, aka a previous FW has not changed bonding,
+                    # then we will use prev_calc_mol. If bonding has changed, we will use mol.
+                    if mol_graph.isomorphic_to(prev_mol_graph):
+                        mol = [prev_calc_mol]
+                    else:
+                        print("Not using prev_calc_mol as it is not isomorphic to passed molecule!")
             else:
-              mol = prev_calc_mol
-        elif self.get("molecule"):
-            mol = self.get("molecule")
+              mol = [prev_calc_mol]
+        elif self.get("molecules"):
+            mol = self.get("molecules")
         # if no molecule is present raise an error
         else:
             raise KeyError(
@@ -82,7 +89,9 @@ class WriteInputFromIOSet(FiretaskBase):
             )
 
         qcin.write(input_file)
-        mol.to("xyz", mol_file)
+        with open(mol_file, 'w') as to_write:
+            for m in mol:
+                to_write.write(m.to("xyz") + "\n")
 
 
 @explicit_serialize
@@ -96,8 +105,8 @@ class WriteCustomInput(FiretaskBase):
                 Ex: rem = {'method': 'rimp2', 'basis': '6-31*G++' ... }
 
         optional_params:
-            molecule (pymatgen Molecule object): The molecule representing the
-                initial molecular geometry.
+            molecules (list of pymatgen Molecule objects): The molecule(s)
+                representing the initial molecular geometry/geometries.
             pcm (dict): A dictionary of values relating to the polarizable continuum
                 model (PCM). Note that, if a pcm dict is provided, then a "solvent"
                 dict (described below) should also be provided, but a "smx" dict
@@ -120,7 +129,7 @@ class WriteCustomInput(FiretaskBase):
         """
 
     required_params = ["rem"]
-    # optional_params will need to be modified if more QChem sections are added QCInput
+
     optional_params = [
         "molecule", "pcm", "solvent", "smx", "molecule_file", "lot_file",
         "write_to_dir"
@@ -135,21 +144,23 @@ class WriteCustomInput(FiretaskBase):
         if fw_spec.get("prev_calc_molecule"):
             prev_calc_mol = fw_spec.get("prev_calc_molecule")
             # if a molecule is also passed as an optional parameter
-            if self.get("molecule"):
-                mol = self.get("molecule")
-                # check if mol and prev_calc_mol are isomorphic
-                mol_graph = MoleculeGraph.with_local_env_strategy(mol,
-                                                                  OpenBabelNN())
-                prev_mol_graph = MoleculeGraph.with_local_env_strategy(prev_calc_mol,
-                                                                       OpenBabelNN())
-                if mol_graph.isomorphic_to(prev_mol_graph):
-                    mol = prev_calc_mol
-                else:
-                    print("WARNING: Molecule from spec is not isomorphic to passed molecule!")
+            if self.get("molecules"):
+                mol = self.get("molecules")
+
+                if len(mol) == 1:
+                    # check if mol and prev_calc_mol are isomorphic
+                    mol_graph = MoleculeGraph.with_local_env_strategy(mol,
+                                                                      OpenBabelNN())
+                    prev_mol_graph = MoleculeGraph.with_local_env_strategy(prev_calc_mol,
+                                                                           OpenBabelNN())
+                    if mol_graph.isomorphic_to(prev_mol_graph):
+                        mol = [prev_calc_mol]
+                    else:
+                        print("WARNING: Molecule from spec is not isomorphic to passed molecule!")
             else:
-              mol = prev_calc_mol
-        elif self.get("molecule"):
-            mol = self.get("molecule")
+              mol = [prev_calc_mol]
+        elif self.get("molecules"):
+            mol = self.get("molecules")
         else:
             raise KeyError(
                 "No molecule present, add as an optional param or check fw_spec"
@@ -166,7 +177,10 @@ class WriteCustomInput(FiretaskBase):
             solvent=solvent,
             smx=smx)
         qcin.write_file(input_file)
-        mol.to("xyz", mol_file)
+
+        with open(mol_file, 'w') as to_write:
+            for m in mol:
+                to_write.write(m.to("xyz") + "\n")
 
 
 @explicit_serialize
@@ -176,8 +190,8 @@ class WriteInput(FiretaskBase):
 
     required_params:
         input (QCTemplate): QCTemplate object
-        molecule (pymatgen Molecule object): The molecule representing the
-            initial molecular geometry.
+        molecules (list of pymatgen Molecule objects): The molecule(s)
+            representing the initial molecular geometry/geometries.
 
     optional_params:
         molecule_file (str): Name of the file for the initial molecule geometry. Defaults to
@@ -187,7 +201,7 @@ class WriteInput(FiretaskBase):
             the default is to write to the current working directory
 
     """
-    required_params = ["input", "molecule"]
+    required_params = ["input", "molecules"]
     optional_params = ["molecule_file", "lot_file", "write_to_dir"]
 
     def run_task(self, fw_spec):
@@ -199,7 +213,10 @@ class WriteInput(FiretaskBase):
 
         qcin = self["input"]
         qcin.write_file(input_file)
-        self["molecule"].to("xyz", mol_file)
+
+        with open(mol_file, 'w') as to_write:
+            for m in self["molecules"]:
+                to_write.write(m.to("xyz") + "\n")
 
 
 @explicit_serialize
