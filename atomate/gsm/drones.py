@@ -15,8 +15,8 @@ from monty.json import jsanitize
 
 from pymatgen.apps.borg.hive import AbstractDrone
 from pymatgen.io.babel import BabelMolAdaptor
-from pymatgen.io.qchem import QCInput
-from pymatgen.io.qchem import QCOutput
+from pymatgen.io.qchem.inputs import QCInput
+from pymatgen.io.qchem.outputs import QCOutput
 from pymatgen.io.gsm.inputs import (QCTemplate, GSMIsomerInput,
                                     parse_multi_xyz)
 from pymatgen.io.gsm.outputs import (GSMOutput,
@@ -54,13 +54,13 @@ class GSMDrone(AbstractDrone):
     # Schema def of important keys and sub-keys; used in validation
     schema = {
         "root": {
-            "dir_name", "input", "output", "smiles", "walltime", "cputime",
-            "formula_pretty", "formula_anonymous", "chemsys", "pointgroup",
-            "formula_alphabetical"
+            "dir_name", "input", "output", "calc", "smiles", "formula_pretty",
+            "formula_anonymous", "chemsys", "pointgroup", "formula_alphabetical"
         },
         "input": {"initial_reactants", "initial_products", "mode", "num_nodes",
-                  "ends_fixed"},
-        "output": {"string_nodes", "ts_guess", "ts_energy", "absolute_ts_energy"}
+                  "reactants_fixed", "products_fixed"},
+        "output": {"optimized_node_molecules", "ts_node", "ts_molecule",
+                   "ts_energy", "absolute_ts_energy"}
     }
 
     def __init__(self, additional_fields=None):
@@ -157,7 +157,7 @@ class GSMDrone(AbstractDrone):
                                   template_file=temp_file, output_file=out_file,
                                   isomers_file=iso_file, internal_coordinate_file=ic_file,
                                   optimized_geom_file=opt_file)
-            self.post_process(d)
+            self.post_process(path, d)
         else:
             raise ValueError("Either input or output not found!")
         self.validate_doc(d)
@@ -184,237 +184,181 @@ class GSMDrone(AbstractDrone):
             # Parse all relevant files
             initial_mol = parse_multi_xyz(molecule_file)
             temp_file = QCTemplate.from_file(template_file)
-            iso_file = GSMIsomerInput.from_file(isomers_file)
+            if isomers_file is not None:
+                iso_file = GSMIsomerInput.from_file(isomers_file)
             out_file = GSMOutput(output_file)
             ic_file = GSMInternalCoordinateDataParser(internal_coordinate_file)
-            opt_file = GSMOptimizedStringParser()
+            opt_file = GSMOptimizedStringParser(optimized_geom_file)
 
-            #TODO: YOU ARE HERE
+            d["warnings"] = dict()
 
-            d["structure_change"] = []
-            d["warnings"] = {}
-            for entry in d["calcs_reversed"]:
-                if "structure_change" in entry and "structure_change" not in d["warnings"]:
-                    if entry["structure_change"] != "no_change":
-                        d["warnings"]["structure_change"] = True
-                if "structure_change" in entry:
-                    d["structure_change"].append(entry["structure_change"])
-                for key in entry["warnings"]:
-                    if key not in d["warnings"]:
-                        d["warnings"][key] = True
+            # INPUTS
+            d["input"] = dict()
+            d["input"]["initial_reactants"] = None
+            d["input"]["initial_products"] = None
 
-            d_calc_init = d["calcs_reversed"][-1]
-            d_calc_final = d["calcs_reversed"][0]
+            if len(initial_mol) == 1:
+                d["input"]["initial_reactants"] = initial_mol[0]
+            elif len(initial_mol) == 2:
+                d["input"]["initial_reactants"] = initial_mol[0]
+                d["input"]["initial_products"] = initial_mol[1]
 
-            d["input"] = {
-                "initial_molecule": d_calc_init["initial_molecule"],
-                "job_type": d_calc_init["input"]["rem"]["job_type"]
-            }
-            d["output"] = {
-                "initial_molecule": d_calc_final["initial_molecule"],
-                "job_type": d_calc_final["input"]["rem"]["job_type"],
-                "mulliken": d_calc_final["Mulliken"][-1]
-            }
-            if "RESP" in d_calc_final:
-                d["output"]["resp"] = d_calc_final["RESP"][-1]
-            elif "ESP" in d_calc_final:
-                d["output"]["esp"] = d_calc_final["ESP"][-1]
+            d["input"]["mode"] = out_file.data["inputs"]["gsm_type"]
 
-            if d["output"]["job_type"] in ["opt", "optimization", "ts"]:
-                if "molecule_from_optimized_geometry" in d_calc_final:
-                    d["output"]["optimized_molecule"] = d_calc_final[
-                        "molecule_from_optimized_geometry"]
-                    d["output"]["final_energy"] = d_calc_final["final_energy"]
+            num_nodes = out_file.data["inputs"].get("num_nodes")
+            if num_nodes is None:
+                if "SE" in d["input"]["mode"]:
+                    d["input"]["num_nodes"] = 30
                 else:
-                    d["output"]["final_energy"] = "unstable"
-                if d_calc_final["opt_constraint"]:
-                    d["output"]["constraint"] = [
-                        d_calc_final["opt_constraint"][0],
-                        float(d_calc_final["opt_constraint"][6])
-                    ]
-            elif d["output"]["job_type"] in ["freq", "frequency"]:
-                d["output"]["frequencies"] = d_calc_final["frequencies"]
-                d["output"]["enthalpy"] = d_calc_final["total_enthalpy"]
-                d["output"]["entropy"] = d_calc_final["total_entropy"]
-                if d["input"]["job_type"] in ["opt", "optimization", "ts"]:
-                    d["output"]["optimized_molecule"] = d_calc_final[
-                        "initial_molecule"]
-                    d["output"]["final_energy"] = d["calcs_reversed"][1][
-                        "final_energy"]
-            elif d["output"]["job_type"] in ["fsm", "gsm"]:
-                d["input"]["initial_reactant_molecule"] = d_calc_final["string_initial_reactant_molecules"]
-                d["input"]["initial_product_molecule"] = d_calc_final["string_initial_product_molecules"]
-                d["input"]["initial_reactant_geometry"] = d_calc_final["string_initial_reactant_geometry"]
-                d["input"]["initial_product_geometry"] = d_calc_final["string_initial_product_geometry"]
-                d["output"]["num_images"] = d_calc_final["string_num_images"]
-                d["output"]["string_relative_energies"] = d_calc_final["string_relative_energies"]
-                d["output"]["string_geometries"] = d_calc_final["string_geometries"]
-                d["output"]["string_molecules"] = d_calc_final["string_molecules"]
-                d["output"]["string_gradient_magnitudes"] = d_calc_final["string_gradient_magnitudes"]
-                d["output"]["ts_guess"] = d_calc_final["string_ts_guess"]
-
-                if d["output"]["job_type"] == "fsm":
-                    d["output"]["string_energies"] = d_calc_final["string_energies"]
-                    d["output"]["string_absolute_distances"] = d_calc_final["string_absolute_distances"]
-                    d["output"]["string_proportional_distances"] = d_calc_final["string_proportional_distances"]
-                    d["output"]["max_energy"] = d_calc_final["string_max_energy"]
-                else:
-                    d["output"]["string_relative_energies_iterations"] = d_calc_final["string_relative_energies_iterations"]
-                    d["output"]["string_gradient_magnitudes_iterations"] = d_calc_final["string_gradient_magnitudes_iterations"]
-                    d["output"]["string_total_gradient_magnitude"] = d_calc_final["string_total_gradient_magnitude"]
-                    d["output"]["string_total_gradient_magnitude_iterations"] = d_calc_final["string_total_gradient_magnitude_iterations"]
-                    d["output"]["string_max_relative_energy"] = d_calc_final["string_max_relative_energy"]
-
-            if "final_energy" not in d["output"]:
-                if d_calc_final["final_energy"] != None:
-                    d["output"]["final_energy"] = d_calc_final["final_energy"]
-                else:
-                    d["output"]["final_energy"] = d_calc_final["SCF"][-1][-1][0]
-
-            if d_calc_final["completion"]:
-                total_cputime = 0.0
-                total_walltime = 0.0
-                for calc in d["calcs_reversed"]:
-                    if "walltime" in calc and "cputime" in calc:
-                        if calc["walltime"] is not None:
-                            total_walltime += calc["walltime"]
-                        if calc["cputime"] is not None:
-                            total_cputime += calc["cputime"]
-                d["walltime"] = total_walltime
-                d["cputime"] = total_cputime
+                    d["input"]["num_nodes"] = 9
             else:
-                d["walltime"] = None
-                d["cputime"] = None
+                d["input"]["num_nodes"] = int(num_nodes)
 
-            comp = d["output"]["initial_molecule"].composition
+            d["input"]["reactants_fixed"] = out_file.data["inputs"].get("reactant_geom_fixed", False)
+            d["input"]["products_fixed"] = out_file.data["inputs"].get("product_geom_fixed", False)
+
+            d["input"]["template"] = {"rem": temp_file.rem,
+                                      "pcm": temp_file.pcm,
+                                      "solvent": temp_file.solvent,
+                                      "smx": temp_file.smx}
+
+            if "SE" in d["input"]["mode"]:
+                if isomers_file is None:
+                    raise ValueError("No isomers file provided for single-ended calculation.")
+                else:
+                    d["input"]["isomers"] = {"bonds_formed": iso_file.bonds_formed,
+                                             "bonds_broken": iso_file.bonds_broken,
+                                             "angles": iso_file.angles,
+                                             "torsions": iso_file.torsions,
+                                             "out_of_planes": iso_file.out_of_planes}
+
+            d["input"]["parameters"] = out_file.data["inputs"]
+
+            # OUTPUTS
+            d["output"] = dict()
+
+            d["output"]["completion"] = out_file.data["completion"]
+
+            if "SE" in d["input"]["mode"]:
+                d["output"]["initial_energy"] = out_file.data.get("initial_energy", None)
+                d["driving_coord_trajectories"] = out_file.data.get("driving_coord_trajectories", None)
+            else:
+                d["output"]["initial_energy_rct"] = out_file.data.get("initial_energy_rct", None)
+                d["output"]["initial_energy_pro"] = out_file.data.get("initial_energy_pro", None)
+
+            d["output"]["energy_profile"] = out_file.data.get("final_energy_profile", None)
+            d["output"]["path_uphill"] = out_file.data.get("final_energy_profile", None)
+            d["output"]["path_dissociative"] = out_file.data.get("final_path_dissociative", None)
+            d["output"]["minima_nodes"] = out_file.data.get("final_min_nodes", None)
+            d["output"]["maxima_nodes"] = out_file.data.get("final_max_nodes", None)
+            d["output"]["minima_nodes"] = out_file.data.get("final_min_nodes", None)
+            d["output"]["maximum_node"] = out_file.data.get("final_max_node", None)
+            d["output"]["maximum_energy"] = out_file.data.get("final_max_energy", None)
+
+            if d["output"]["completion"]:
+                d["output"]["reactant_node"] = out_file.data["min_rct_node"]
+                d["output"]["product_node"] = out_file.data["min_pro_node"]
+                d["output"]["ts_node"] = out_file.data["ts_node"]
+                d["output"]["absolute_ts_energy"] = out_file.data["absolute_ts_energy"]
+                d["output"]["ts_energy"] = out_file.data["ts_energy"]
+                d["output"]["delta_e"] = out_file.data["delta_e"]
+            else:
+                d["output"]["reactant_node"] = None
+                d["output"]["product_node"] = None
+                d["output"]["ts_node"] = None
+                d["output"]["ts_energy"] = None
+                d["output"]["absolute_ts_energy"] = None
+                d["output"]["delta_e"] = None
+
+            if d["output"]["completion"]:
+                d["output"]["internal_coords"] = ic_file.data
+                d["output"]["species"] = opt_file.data["species"]
+                d["output"]["optimized_node_geometries"] = opt_file.data["geometries"]
+                d["output"]["optimized_node_molecules"] = opt_file.data["molecules"]
+                d["output"]["optimized_node_energies"] = opt_file.data["energies"]
+                d["output"]["optimized_node_forces"] = opt_file.data["forces"]
+                d["output"]["ts_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["ts_node"]]
+                d["output"]["reactant_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["reactant_node"]]
+                d["output"]["product_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["product_node"]]
+            else:
+                d["output"]["internal_coords"] = None
+                d["output"]["species"] = None
+                d["output"]["optimized_node_geometries"] = None
+                d["output"]["optimized_node_molecules"] = None
+                d["output"]["optimized_node_energies"] = None
+                d["output"]["optimized_node_forces"] = None
+                d["output"]["ts_molecule"] = None
+                d["output"]["reactant_molecule"] = None
+                d["output"]["product_molecule"] = None
+
+            d["calc"] = out_file.data
+
+            d["warnings"] = out_file.data["warnings"]
+            d["errors"] = out_file.data["errors"]
+
+            # if d_calc_final["completion"]:
+            #     total_cputime = 0.0
+            #     total_walltime = 0.0
+            #     for calc in d["calcs_reversed"]:
+            #         if "walltime" in calc and "cputime" in calc:
+            #             if calc["walltime"] is not None:
+            #                 total_walltime += calc["walltime"]
+            #             if calc["cputime"] is not None:
+            #                 total_cputime += calc["cputime"]
+            #     d["walltime"] = total_walltime
+            #     d["cputime"] = total_cputime
+            # else:
+            #     d["walltime"] = None
+            #     d["cputime"] = None
+
+            comp = d["input"]["initial_reactants"].composition
             d["formula_pretty"] = comp.reduced_formula
             d["formula_anonymous"] = comp.anonymized_formula
             d["formula_alphabetical"] = comp.alphabetical_formula
-            d["chemsys"] = "-".join(sorted(set(d_calc_final["species"])))
-            if d_calc_final["point_group"] != None:
-                d["pointgroup"] = d_calc_final["point_group"]
-            else:
-                try:
-                    d["pointgroup"] = PointGroupAnalyzer(d["output"]["initial_molecule"]).sch_symbol
-                except ValueError:
-                    d["pointgroup"] = "PGA_error"
 
-            bb = BabelMolAdaptor(d["output"]["initial_molecule"])
+            elements = list()
+            for component in d["formula_alphabetical"].split(" "):
+                elements.append("".join([i for i in component if not i.isdigit()]))
+            d["chemsys"] = "-".join(sorted(set(elements)))
+
+            try:
+                d["pointgroup_ts"] = PointGroupAnalyzer(d["output"]["ts_molecule"]).sch_symbol
+            except ValueError:
+                d["pointgroup"] = "PGA_error"
+
+            try:
+                d["pointgroup_reactant"] = PointGroupAnalyzer(d["output"]["reactant_molecule"]).sch_symbol
+            except ValueError:
+                d["pointgroup"] = "PGA_error"
+
+            try:
+                d["pointgroup_product"] = PointGroupAnalyzer(d["output"]["product_molecule"]).sch_symbol
+            except ValueError:
+                d["pointgroup"] = "PGA_error"
+
+            bb = BabelMolAdaptor(d["output"]["ts_molecule"])
             pbmol = bb.pybel_mol
             smiles = pbmol.write(str("smi")).split()[0]
             d["smiles"] = smiles
 
-            d["state"] = "successful" if d_calc_final["completion"] else "unsuccessful"
-
-            if "special_run_type" in d:
-                if d["special_run_type"] == "frequency_flattener":
-                    if d["state"] == "successful":
-                        orig_num_neg_freq = sum(1 for freq in d["calcs_reversed"][-2]["frequencies"] if freq < 0)
-                        orig_energy = d_calc_init["final_energy"]
-                        final_num_neg_freq = sum(1 for freq in d_calc_final["frequencies"] if freq < 0)
-                        final_energy = d["calcs_reversed"][1]["final_energy"]
-                        d["num_frequencies_flattened"] = orig_num_neg_freq - final_num_neg_freq
-                        if final_num_neg_freq > 0: # If a negative frequency remains,
-                            # and it's too large to ignore,
-                            if final_num_neg_freq > 1 or abs(d["output"]["frequencies"][0]) >= 15.0:
-                                d["state"] = "unsuccessful" # then the flattening was unsuccessful
-                        if final_energy > orig_energy:
-                            d["warnings"]["energy_increased"] = True
-
-                elif d["special_run_type"] == "berny_optimization":
-                    logfiles = [f for f in os.listdir(dir_name)
-                                if f.startswith("berny.log")]
-                    berny_traj = list()
-                    for log in logfiles:
-                        parsed = BernyLogParser(os.path.join(dir_name, log)).data
-                        doc = dict()
-
-                        doc["internals"] = parsed["internals"]
-                        doc["initial_energy"] = parsed["energy_trajectory"][0]
-                        doc["final_energy"] = parsed["final_energy"]
-                        doc["trust"] = parsed["trust"]
-                        doc["step_walltimes"] = parsed["opt_step_times"]
-                        doc["walltime"] = parsed["opt_walltime"]
-                        if d["walltime"] is not None:
-                            d["walltime"] += doc["walltime"]
-
-                        berny_traj.append(doc)
-                    d["berny_trajectory"] = berny_traj
-
-                if d["special_run_type"] in ["frequency_flattener", "berny_optimization"]:
-                    opt_traj = list()
-                    for entry in d["calcs_reversed"]:
-                        if entry["input"]["rem"]["job_type"] in ["opt", "optimization", "ts"]:
-                            doc = {"initial": {}, "final": {}}
-                            doc["initial"]["molecule"] = entry["initial_molecule"]
-                            doc["final"]["molecule"] = entry["molecule_from_last_geometry"]
-                            doc["initial"]["total_energy"] = entry["energy_trajectory"][0]
-                            doc["final"]["total_energy"] = entry["energy_trajectory"][-1]
-                            doc["initial"]["scf_energy"] = entry["SCF"][0][-1][0]
-                            doc["final"]["scf_energy"] = entry["SCF"][-1][-1][0]
-                            doc["structure_change"] = entry["structure_change"]
-                            opt_traj.append(doc)
-                    opt_traj.reverse()
-                    opt_trajectory = {"trajectory": opt_traj, "structure_change": [[ii, entry["structure_change"]] for ii,entry in enumerate(opt_traj)], "energy_increase": []}
-                    for ii, entry in enumerate(opt_traj):
-                        if entry["final"]["total_energy"] > entry["initial"]["total_energy"]:
-                            opt_trajectory["energy_increase"].append([ii, entry["final"]["total_energy"]-entry["initial"]["total_energy"]])
-                        if ii != 0:
-                            if entry["final"]["total_energy"] > opt_traj[ii-1]["final"]["total_energy"]:
-                                opt_trajectory["energy_increase"].append([ii-1, ii, entry["final"]["total_energy"]-opt_traj[ii-1]["final"]["total_energy"]])
-                            struct_change = check_for_structure_changes(opt_traj[ii-1]["final"]["molecule"], entry["final"]["molecule"])
-                            if struct_change != entry["structure_change"]:
-                                opt_trajectory["structure_change"].append([ii-1, ii, struct_change])
-                                d["warnings"]["between_iteration_structure_change"] = True
-                    if "linked" in d:
-                        if d["linked"] == True:
-                            opt_trajectory["discontinuity"] = {"structure": [], "scf_energy": [], "total_energy": []}
-                            for ii, entry in enumerate(opt_traj):
-                                if ii != 0:
-                                    if entry["initial"]["molecule"] != opt_traj[ii-1]["final"]["molecule"]:
-                                        opt_trajectory["discontinuity"]["structure"].append([ii-1,ii])
-                                        d["warnings"]["linked_structure_discontinuity"] = True
-                                    if entry["initial"]["total_energy"] != opt_traj[ii-1]["final"]["total_energy"]:
-                                        opt_trajectory["discontinuity"]["total_energy"].append([ii-1,ii])
-                                    if entry["initial"]["scf_energy"] != opt_traj[ii-1]["final"]["scf_energy"]:
-                                        opt_trajectory["discontinuity"]["scf_energy"].append([ii-1,ii])
-                    d["opt_trajectory"] = opt_trajectory
+            d["state"] = "successful" if d["output"]["completion"] else "unsuccessful"
 
             d["last_updated"] = datetime.datetime.utcnow()
             return d
 
         except Exception:
             logger.error(traceback.format_exc())
-            logger.error("Error in " + os.path.abspath(dir_name) + ".\n" +
+            logger.error("Error in " + os.path.abspath(path) + ".\n" +
                          traceback.format_exc())
             raise
 
     @staticmethod
-    def process_qchemrun(dir_name, taskname, input_file, output_file):
-        """
-        Process a QChem calculation, aka an input/output pair.
-        """
-        qchem_input_file = os.path.join(dir_name, input_file)
-        qchem_output_file = os.path.join(dir_name, output_file)
-        d = QCOutput(qchem_output_file).data
-        temp_input = QCInput.from_file(qchem_input_file)
-        d["input"] = {}
-        d["input"]["molecule"] = temp_input.molecule
-        d["input"]["rem"] = temp_input.rem
-        d["input"]["opt"] = temp_input.opt
-        d["input"]["pcm"] = temp_input.pcm
-        d["input"]["solvent"] = temp_input.solvent
-        d["input"]["smx"] = temp_input.smx
-        d["task"] = {"type": taskname, "name": taskname}
-        return d
-
-    @staticmethod
-    def post_process(dir_name, d):
+    def post_process(path, d):
         """
         Post-processing for various files other than the QChem input and output files.
         """
-        logger.info("Post-processing dir:{}".format(dir_name))
-        fullpath = os.path.abspath(dir_name)
+        logger.info("Post-processing dir:{}".format(path))
+        fullpath = os.path.abspath(path)
         filenames = glob.glob(os.path.join(fullpath, "custodian.json*"))
         if len(filenames) >= 1:
             with zopen(filenames[0], "rt") as f:
@@ -422,24 +366,7 @@ class GSMDrone(AbstractDrone):
         filenames = glob.glob(os.path.join(fullpath, "solvent_data*"))
         if len(filenames) >= 1:
             with zopen(filenames[0], "rt") as f:
-                d["custom_smd"] = f.readlines()[0]
-        filenames = glob.glob(os.path.join(fullpath, "processed_critic2.json*"))
-        if len(filenames) >= 1:
-            with zopen(filenames[0], "rt") as f:
-                d["critic2"] = {}
-                d["critic2"]["processed"] = json.load(f)
-            filenames = glob.glob(os.path.join(fullpath, "CP.json*"))
-            if len(filenames) >= 1:
-                with zopen(filenames[0], "rt") as f:
-                    d["critic2"]["CP"] = json.load(f)
-            filenames = glob.glob(os.path.join(fullpath, "YT.json*"))
-            if len(filenames) >= 1:
-                with zopen(filenames[0], "rt") as f:
-                    d["critic2"]["YT"] = json.load(f)
-            filenames = glob.glob(os.path.join(fullpath, "bonding.json*"))
-            if len(filenames) >= 1:
-                with zopen(filenames[0], "rt") as f:
-                    d["critic2"]["bonding"] = json.load(f)
+                d["custom_smd"] = f.readlines()[0].strip()
 
     def validate_doc(self, d):
         """
