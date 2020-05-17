@@ -188,18 +188,18 @@ class WriteIsomer(FiretaskBase):
 
     optional_params:
         molecule (pymatgen Molecule object)
-        isomer_file (str): Name of the pyGSM input file. Defaults to isomers.txt
+        isomers_file (str): Name of the pyGSM input file. Defaults to isomers.txt
         write_to_dir (str): Path of the directory where the QChem input file
             will be written, the default is to write to the current working
             directory
     """
 
     required_params = ["isomers"]
-    optional_params = ["molecule", "isomer_file", "write_to_dir"]
+    optional_params = ["molecule", "isomers_file", "write_to_dir"]
 
     def run_task(self, fw_spec):
-        isomer_file = os.path.join(self.get("write_to_dir", ""),
-                                   self.get("isomer_file", "isomers.txt"))
+        isomers_file = os.path.join(self.get("write_to_dir", ""),
+                                   self.get("isomers_file", "isomers.txt"))
 
         if isinstance(self["isomers"], dict):
             mol = self.get("molecule", None)
@@ -221,4 +221,4 @@ class WriteIsomer(FiretaskBase):
             raise ValueError("Input 'isomers' should either be a GSMIsomerInput"
                              " object or a dictionary!")
 
-        isomer_object.write_file(isomer_file)
+        isomer_object.write_file(isomers_file)

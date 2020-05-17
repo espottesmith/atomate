@@ -84,7 +84,7 @@ class RunGSMFake(FiretaskBase):
 
      """
     required_params = ["ref_dir"]
-    optional_params = ["lot_file", "molecule_file", "isomer_file"]
+    optional_params = ["lot_file", "molecule_file", "isomers_file"]
 
     def run_task(self, fw_spec):
         self._verify_inputs()
@@ -132,13 +132,13 @@ class RunGSMFake(FiretaskBase):
                 user_mol.cart_coords,
                 atol=0.0001)
 
-        if self.get("isomer_file"):
-            isomer_file = self.get("isomer_file")
+        if self.get("isomers_file"):
+            isomers_file = self.get("isomers_file")
             user_iso = GSMIsomerInput.from_file(os.path.join(os.getcwd(),
                                                              "isomers.txt"))
 
             ref_iso = GSMIsomerInput.from_file(os.path.join(os.getcwd(),
-                                                            isomer_file))
+                                                            isomers_file))
 
             np.testing.assert_equal(user_iso.num_coords,
                                     ref_iso.num_coords)
