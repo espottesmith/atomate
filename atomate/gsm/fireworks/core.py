@@ -36,7 +36,7 @@ class SingleEndedGSMFW(Firework):
                  num_nodes=30,
                  fixed_endpoint=True,
                  name="single-ended GSM",
-                 max_cores=">>max_cores<<",
+                 max_cores=32,
                  input_params=None,
                  db_file=None,
                  parents=None,
@@ -83,9 +83,9 @@ class SingleEndedGSMFW(Firework):
         output_file = "gsm.out"
 
         flags = [base_command, "-mode", "SE_GSM", "-xyzfile", molecule_file, "-package",
-                 "QChem", "-lot_inp_file", lot_file, "-num_nodes", num_nodes,
-                 "-isomers", isomers_file, "-charge", molecule.charge,
-                 "-multiplicity", molecule.spin_multiplicity]
+                 "QChem", "-lot_inp_file", lot_file, "-num_nodes", str(num_nodes),
+                 "-isomers", isomers_file, "-charge", str(molecule.charge),
+                 "-multiplicity", str(molecule.spin_multiplicity), "-nproc", str(max_cores)]
         if fixed_endpoint:
             flags.append("-reactant_geom_fixed")
         flags.append(">")
