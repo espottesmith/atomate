@@ -54,11 +54,8 @@ class WriteInputFromIOSet(FiretaskBase):
         mol_file = os.path.join(self.get("write_to_dir", ""),
                                 self.get("molecule_file", "input.xyz"))
 
-        # if a full QChemDictSet object was provided
-        qcin = self["qchem_input_set"]
-        # if a molecule is being passed through fw_spec
-
-        mol = self.get("molecules")
+        qcin = self["input_set"]
+        mol = self["molecules"]
 
         qcin.write(input_file)
         with open(mol_file, 'w') as to_write:
