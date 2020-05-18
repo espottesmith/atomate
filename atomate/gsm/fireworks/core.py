@@ -93,7 +93,7 @@ class SingleEndedGSMFW(Firework):
 
         t = list()
 
-        input_set = GSMDictSet(input_params)
+        input_set = GSMDictSet(**input_params)
 
         t.append(
             WriteInputFromIOSet(
