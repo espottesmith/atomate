@@ -49,10 +49,11 @@ class GSMToDb(FiretaskBase):
             Supports env_chk. Default: write data to JSON file.
         fw_spec_field (str): if set, will update the task doc with the contents
             of this key in the fw_spec.
+        additional_fields (dict): dict of additional fields to add
     """
     optional_params = [
         "calc_dir", "calc_loc", "molecule_file", "template_file", "output_file",
-        "isomers_file", "db_file", "fw_spec_field"
+        "isomers_file", "db_file", "fw_spec_field", "additional_fields"
     ]
 
     def run_task(self, fw_spec):
@@ -74,7 +75,7 @@ class GSMToDb(FiretaskBase):
 
         additional_fields = self.get("additional_fields", [])
 
-        drone = GSMDrone()
+        drone = GSMDrone(additional_fields=additional_fields)
 
         # assimilate (i.e., parse)
         task_doc = drone.assimilate(

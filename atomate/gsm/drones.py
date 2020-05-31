@@ -169,7 +169,8 @@ class GSMDrone(AbstractDrone):
 
         try:
             fullpath = os.path.abspath(path)
-            d = dict()
+
+            d = jsanitize(self.additional_fields, strict=True)
 
             d["schema"] = {
                 "code": "atomate",
