@@ -269,6 +269,12 @@ class QChemDrone(AbstractDrone):
                     d["output"]["string_total_gradient_magnitude_iterations"] = d_calc_final["string_total_gradient_magnitude_iterations"]
                     d["output"]["string_max_relative_energy"] = d_calc_final["string_max_relative_energy"]
 
+            elif d["output"]["job_type"] == "pes_scan":
+                d["output"]["scan_energies"] = d_calc_final["scan_energies"]
+                d["input"]["scan_variables"] = d_calc_final["scan_variables"]
+                d["output"]["scan_geometries"] = d_calc_final["optimized_geometries"]
+                d["output"]["scan_molecules"] = d_calc_final["molecules_from_optimized_geometries"]
+
             if "final_energy" not in d["output"]:
                 if d_calc_final["final_energy"] != None:
                     d["output"]["final_energy"] = d_calc_final["final_energy"]
@@ -389,13 +395,6 @@ class QChemDrone(AbstractDrone):
                                     if entry["initial"]["scf_energy"] != opt_traj[ii-1]["final"]["scf_energy"]:
                                         opt_trajectory["discontinuity"]["scf_energy"].append([ii-1,ii])
                     d["opt_trajectory"] = opt_trajectory
-
-                elif d["special_run_type"] == "pes_scan":
-                    if d["state"] == "successful":
-                        d["output"]["scan_energies"] = d["calcs_reversed"][0]["scan_energies"]
-                        d["input"]["scan_variables"] = d["calcs_reversed"][0]["scan_variables"]
-                        d["output"]["scan_geometries"] = d["calcs_reversed"][0]["optimized_geometries"]
-                        d["output"]["scan_molecules"] = d["calcs_reversed"][0]["molecules_from_optimized_geometries"]
 
             d["last_updated"] = datetime.datetime.utcnow()
             return d

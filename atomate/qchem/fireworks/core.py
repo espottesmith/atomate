@@ -646,8 +646,7 @@ class PESScanFW(Firework):
                 db_file=db_file,
                 input_file=input_file,
                 output_file=output_file,
-                additional_fields={"task_label": name,
-                                   "special_run_type": "pes_scan"}))
+                additional_fields={"task_label": name}))
         super(PESScanFW, self).__init__(
             t,
             parents=parents,
