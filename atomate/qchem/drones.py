@@ -14,7 +14,6 @@ import copy
 from monty.io import zopen
 from monty.json import jsanitize
 from pymatgen.io.qchem.outputs import (QCOutput,
-                                       BernyLogParser,
                                        check_for_structure_changes)
 from pymatgen.io.qchem.inputs import QCInput
 from pymatgen.apps.borg.hive import AbstractDrone
@@ -78,10 +77,7 @@ class QChemDrone(AbstractDrone):
             multirun (bool): Whether the job to parse includes multiple
                              calculations in one input / output pair.
             extra_files (list): list of filenames which, in addition to the input and output
-                                     files, must be present. This is most relevant for string
-                                     methods (ex: FSM), where multiple outputs are generated,
-                                     and for jobs using the Berny optimizer, where
-                                     optimization log files are produced.
+                                     files, must be present.
 
         Returns:
             d (dict): a task dictionary
@@ -355,27 +351,7 @@ class QChemDrone(AbstractDrone):
                             if final_energy > orig_energy:
                                 d["warnings"]["energy_increased"] = True
 
-                elif d["special_run_type"] == "berny_optimization":
-                    logfiles = [f for f in os.listdir(dir_name)
-                                if f.startswith("berny.log")]
-                    berny_traj = list()
-                    for log in logfiles:
-                        parsed = BernyLogParser(os.path.join(dir_name, log)).data
-                        doc = dict()
-
-                        doc["internals"] = parsed["internals"]
-                        doc["initial_energy"] = parsed["energy_trajectory"][0]
-                        doc["final_energy"] = parsed["final_energy"]
-                        doc["trust"] = parsed["trust"]
-                        doc["step_walltimes"] = parsed["opt_step_times"]
-                        doc["walltime"] = parsed["opt_walltime"]
-                        if d["walltime"] is not None:
-                            d["walltime"] += doc["walltime"]
-
-                        berny_traj.append(doc)
-                    d["berny_trajectory"] = berny_traj
-
-                if d["special_run_type"] in ["frequency_flattener", "ts_frequency_flattener", "berny_optimization"]:
+                if d["special_run_type"] in ["frequency_flattener", "ts_frequency_flattener"]:
                     opt_traj = list()
                     for entry in d["calcs_reversed"]:
                         if entry["input"]["rem"]["job_type"] in ["opt", "optimization", "ts"]:

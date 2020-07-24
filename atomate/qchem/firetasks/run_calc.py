@@ -81,7 +81,6 @@ class RunQChemCustodian(FiretaskBase):
         max_cores (int): Maximum number of cores to parallelize over. Supports env_chk.
         qclog_file (str): Name of the file to redirect the standard output to. None means
                           not to record the standard output. Defaults to None.
-        berny_logfile (str): Name of the file to print pyberny output to. Defaults to "berny.log"
         suffix (str): String to append to the file in postprocess.
         calc_loc (str): Path where Q-Chem should run. Will env_chk by default. If not in
                         environment, will be set to None, in which case Q-Chem will run in
@@ -113,9 +112,8 @@ class RunQChemCustodian(FiretaskBase):
         "multimode", "input_file", "output_file", "max_cores", "qclog_file",
         "suffix", "calc_loc", "save_scratch", "max_errors", "job_type",
         "max_iterations", "max_molecule_perturb_scale", "linked",
-        "job_type", "handler_group", "gzipped_output", "backup",
-        "freq_before_opt", "berny_logfile", "optimizer_params",
-        "transition_state"
+        "handler_group", "gzipped_output", "backup",
+        "freq_before_opt", "transition_state"
     ]
 
     def run_task(self, fw_spec):
@@ -129,7 +127,6 @@ class RunQChemCustodian(FiretaskBase):
         output_file = self.get("output_file", "mol.qout")
         max_cores = env_chk(self["max_cores"], fw_spec)
         qclog_file = self.get("qclog_file", "mol.qclog")
-        berny_logfile = self.get("berny_logfile", "berny.log")
         suffix = self.get("suffix", "")
         calc_loc = env_chk(self.get("calc_loc"), fw_spec)
         save_scratch = self.get("save_scratch", False)
@@ -196,20 +193,6 @@ class RunQChemCustodian(FiretaskBase):
                     max_cores=max_cores,
                     transition_state=transition_state,
                     calc_loc=calc_loc)
-
-        elif job_type == "berny_opt_with_frequency_flattener":
-            jobs = QCJob.berny_opt_with_frequency_flattener(
-                qchem_command=qchem_cmd,
-                multimode=multimode,
-                input_file=input_file,
-                output_file=output_file,
-                qclog_file=qclog_file,
-                berny_logfile=berny_logfile,
-                max_iterations=max_iterations,
-                freq_before_opt=freq_before_opt,
-                optimizer_params=optimizer_params,
-                max_cores=max_cores)
-
         else:
             raise ValueError("Unsupported job type: {}".format(job_type))
 

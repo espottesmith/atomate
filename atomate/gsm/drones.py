@@ -148,8 +148,7 @@ class GSMDrone(AbstractDrone):
                     opt_file = os.path.join(path, "scratch", file)
 
         any_needed_none = any([e is None for e in [mol_file, temp_file,
-                                                   out_file, ic_file,
-                                                   opt_file]])
+                                                   out_file, opt_file]])
         iso_needed_none = isomers_file is not None and iso_file is None
 
         if not(any_needed_none or iso_needed_none):
@@ -188,7 +187,8 @@ class GSMDrone(AbstractDrone):
             if isomers_file is not None:
                 iso_file = GSMIsomerInput.from_file(isomers_file)
             out_file = GSMOutput(output_file)
-            ic_file = GSMInternalCoordinateDataParser(internal_coordinate_file)
+            if internal_coordinate_file is not None:
+                ic_file = GSMInternalCoordinateDataParser(internal_coordinate_file)
             opt_file = GSMOptimizedStringParser(optimized_geom_file)
 
             d["warnings"] = dict()
@@ -272,15 +272,27 @@ class GSMDrone(AbstractDrone):
                 d["output"]["delta_e"] = None
 
             if d["output"]["completion"]:
-                d["output"]["internal_coords"] = ic_file.data
+                if internal_coordinate_file is not None:
+                    d["output"]["internal_coords"] = ic_file.data
+                else:
+                    d["output"]["internal_coords"] = None
                 d["output"]["species"] = opt_file.data["species"]
                 d["output"]["optimized_node_geometries"] = opt_file.data["geometries"]
                 d["output"]["optimized_node_molecules"] = opt_file.data["molecules"]
                 d["output"]["optimized_node_energies"] = opt_file.data["energies"]
                 d["output"]["optimized_node_forces"] = opt_file.data["forces"]
-                d["output"]["ts_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["ts_node"]]
-                d["output"]["reactant_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["reactant_node"]]
-                d["output"]["product_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["product_node"]]
+                if d["output"]["ts_node"] is not None:
+                    d["output"]["ts_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["ts_node"]]
+                else:
+                    d["output"]["ts_molecule"] = None
+                if d["output"]["reactant_node"] is not None:
+                    d["output"]["reactant_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["reactant_node"]]
+                else:
+                    d["output"]["reactant_molecule"] = None
+                if d["output"]["product_node"] is not None:
+                    d["output"]["product_molecule"] = d["output"]["optimized_node_molecules"][d["output"]["product_node"]]
+                else:
+                    d["output"]["product_molecule"] = None
             else:
                 d["output"]["internal_coords"] = None
                 d["output"]["species"] = None
@@ -322,25 +334,37 @@ class GSMDrone(AbstractDrone):
                 elements.append("".join([i for i in component if not i.isdigit()]))
             d["chemsys"] = "-".join(sorted(set(elements)))
 
-            try:
-                d["pointgroup_ts"] = PointGroupAnalyzer(d["output"]["ts_molecule"]).sch_symbol
-            except ValueError:
-                d["pointgroup"] = "PGA_error"
+            if d["output"]["ts_molecule"] is not None:
+                try:
+                    d["pointgroup_ts"] = PointGroupAnalyzer(d["output"]["ts_molecule"]).sch_symbol
+                except ValueError:
+                    d["pointgroup_ts"] = "PGA_error"
+            else:
+                d["pointgroup_ts"] = None
 
-            try:
-                d["pointgroup_reactant"] = PointGroupAnalyzer(d["output"]["reactant_molecule"]).sch_symbol
-            except ValueError:
-                d["pointgroup"] = "PGA_error"
+            if d["output"]["reactant_molecule"] is not None:
+                try:
+                    d["pointgroup_reactant"] = PointGroupAnalyzer(d["output"]["reactant_molecule"]).sch_symbol
+                except ValueError:
+                    d["pointgroup_reactant"] = "PGA_error"
+            else:
+                d["pointgroup_reactant"] = None
 
-            try:
-                d["pointgroup_product"] = PointGroupAnalyzer(d["output"]["product_molecule"]).sch_symbol
-            except ValueError:
-                d["pointgroup"] = "PGA_error"
+            if d["output"]["product_molecule"] is not None:
+                try:
+                    d["pointgroup_product"] = PointGroupAnalyzer(d["output"]["product_molecule"]).sch_symbol
+                except ValueError:
+                    d["pointgroup_product"] = "PGA_error"
+            else:
+                d["pointgroup_product"] = None
 
-            bb = BabelMolAdaptor(d["output"]["ts_molecule"])
-            pbmol = bb.pybel_mol
-            smiles = pbmol.write(str("smi")).split()[0]
-            d["smiles"] = smiles
+            if d["output"]["ts_molecule"] is not None:
+                bb = BabelMolAdaptor(d["output"]["ts_molecule"])
+                pbmol = bb.pybel_mol
+                smiles = pbmol.write(str("smi")).split()[0]
+                d["smiles"] = smiles
+            else:
+                d["smiles"] = None
 
             d["state"] = "successful" if d["output"]["completion"] else "unsuccessful"
 

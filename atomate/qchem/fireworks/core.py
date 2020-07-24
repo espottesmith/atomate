@@ -75,7 +75,7 @@ class SinglePointFW(Firework):
         qchem_input_params = qchem_input_params or {}
         input_file="mol.qin"
         output_file="mol.qout"
-        t = []
+        t = list()
         t.append(
             WriteInputFromIOSet(
                 molecule=molecule,
@@ -149,7 +149,7 @@ class OptimizeFW(Firework):
         qchem_input_params = qchem_input_params or {}
         input_file="mol.qin"
         output_file="mol.qout"
-        t = []
+        t = list()
         t.append(
             WriteInputFromIOSet(
                 molecule=molecule,
@@ -223,7 +223,7 @@ class FrequencyFW(Firework):
         qchem_input_params = qchem_input_params or {}
         input_file="mol.qin"
         output_file="mol.qout"
-        t = []
+        t = list()
         t.append(
             WriteInputFromIOSet(
                 molecule=molecule,
@@ -646,7 +646,8 @@ class PESScanFW(Firework):
                 db_file=db_file,
                 input_file=input_file,
                 output_file=output_file,
-                additional_fields={"task_label": name}))
+                additional_fields={"task_label": name,
+                                   "special_run_type": "pes_scan"}))
         super(PESScanFW, self).__init__(
             t,
             parents=parents,
@@ -786,7 +787,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                  multimode=">>multimode<<",
                  max_cores=">>max_cores<<",
                  qchem_input_params=None,
-                 max_iterations=10,
+                 max_iterations=3,
                  max_molecule_perturb_scale=0.3,
                  linked=False,
                  freq_before_opt=False,
@@ -825,7 +826,8 @@ class FrequencyFlatteningTransitionStateFW(Firework):
                                        could be used in conjuction with more typical modifications,
                                        as seen in the test_double_FF_opt workflow test.
             max_iterations (int): Number of perturbation -> optimization -> frequency
-                                  iterations to perform. Defaults to 10.
+                                  iterations to perform. Defaults to 3. Higher numbers are not
+                                  recommended, as they rarely lead to improved performance.
             max_molecule_perturb_scale (float): The maximum scaled perturbation that can be
                                                 applied to the molecule. Defaults to 0.3.
             linked (bool): If True (default False), the scratch output from one calculation will be passed
@@ -909,130 +911,6 @@ class FrequencyFlatteningTransitionStateFW(Firework):
             **kwargs)
 
 
-class BernyOptimizeFW(Firework):
-    def __init__(self,
-                 molecule=None,
-                 name="structure optimization with Berny optimizer",
-                 qchem_cmd=">>qchem_cmd<<",
-                 multimode=">>multimode<<",
-                 max_cores=">>max_cores<<",
-                 qchem_input_params=None,
-                 transition_state=False,
-                 optimizer_params=None,
-                 max_iterations=10,
-                 freq_before_opt=False,
-                 db_file=None,
-                 parents=None,
-                 **kwargs):
-        """
-        Optimize a molecule with energy and gradient calculations from Q-Chem and
-        optimization steps determined by a Berny optimizer.
-
-        Args:
-                molecule (Molecule): Input molecule.
-                name (str): Name for the Firework.
-                qchem_cmd (str): Command to run QChem. Supports env_chk.
-                multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
-                max_cores (int): Maximum number of cores to parallelize over. Supports env_chk.
-                transition_state (bool): If True (default False), optimize for a transition state,
-                                         rather than a stable molecule. This changes the
-                                         optimization algorithm.
-                qchem_input_params (dict): Specify kwargs for instantiating the input set parameters.
-                                           Basic uses would be to modify the default inputs of the set,
-                                           such as dft_rung, basis_set, pcm_dielectric, scf_algorithm,
-                                           or max_scf_cycles. See pymatgen/io/qchem/sets.py for default
-                                           values of all input parameters. For instance, if a user wanted
-                                           to use a more advanced DFT functional, include a pcm with a
-                                           dielectric of 30, and use a larger basis, the user would set
-                                           qchem_input_params = {"dft_rung": 5, "pcm_dielectric": 30,
-                                           "basis_set": "6-311++g**"}. However, more advanced customization
-                                           of the input is also possible through the overwrite_inputs key
-                                           which allows the user to directly modify the rem, pcm, smd, and
-                                           solvent dictionaries that QChemDictSet passes to inputs.py to
-                                           print an actual input file. For instance, if a user wanted to
-                                           set the sym_ignore flag in the rem section of the input file
-                                           to true, then they would set qchem_input_params = {"overwrite_inputs":
-                                           "rem": {"sym_ignore": "true"}}. Of course, overwrite_inputs
-                                           could be used in conjuction with more typical modifications,
-                                           as seen in the test_double_FF_opt workflow test.
-                optimizer_params (dict): Specify kwargs for instantiating the optimizer parameters,
-                                         including the logging method, verbosity, convergence parameters,
-                                         and initial trust radius.
-                max_iterations (int): Number of perturbation -> optimization -> frequency
-                                      iterations to perform. Defaults to 10.
-                db_file (str): Path to file specifying db credentials to place output parsing.
-                parents ([Firework]): Parents of this particular Firework.
-                **kwargs: Other kwargs that are passed to Firework.__init__.
-        """
-
-        qchem_input_params = qchem_input_params or {}
-        if freq_before_opt:
-            if "geom_opt_max_cycles" in qchem_input_params:
-                del qchem_input_params["geom_opt_max_cycles"]
-        else:
-            qchem_input_params["geom_opt_max_cycles"] = 1
-        optimizer_params = optimizer_params or {}
-        optimizer_params["transition_state"] = transition_state
-        if "max_steps" not in optimizer_params:
-            optimizer_params["max_steps"] = 250
-
-        input_file = "mol.qin"
-        output_file = "mol.qout"
-        runs = list()
-        if freq_before_opt:
-            runs.append("freq_pre")
-        for ii in range(max_iterations):
-            for jj in range(optimizer_params["max_steps"]):
-                runs.append("opt_{}_{}".format(ii, jj))
-            runs.append("freq_{}".format(ii))
-
-        t = list()
-        if freq_before_opt:
-            t.append(
-                WriteInputFromIOSet(
-                    molecule=molecule,
-                    qchem_input_set="FreqSet",
-                    input_file=input_file,
-                    qchem_input_params=qchem_input_params))
-        else:
-            t.append(
-                WriteInputFromIOSet(
-                    molecule=molecule,
-                    qchem_input_set="OptSet",
-                    input_file=input_file,
-                    qchem_input_params=qchem_input_params))
-        t.append(
-            RunQChemCustodian(
-                qchem_cmd=qchem_cmd,
-                multimode=multimode,
-                input_file=input_file,
-                output_file=output_file,
-                max_cores=max_cores,
-                job_type="berny_opt_with_frequency_flattener",
-                max_iterations=max_iterations,
-                transition_state=transition_state,
-                handler_group="no_opt",
-                freq_before_opt=freq_before_opt,
-                optimizer_params=optimizer_params))
-        t.append(
-            QChemToDb(
-                db_file=db_file,
-                input_file=input_file,
-                output_file=output_file,
-                runs=runs,
-                additional_fields={
-                    "task_label": name,
-                    "special_run_type": "berny_optimization",
-                    "linked": True
-                }))
-
-        super(BernyOptimizeFW, self).__init__(
-            t,
-            parents=parents,
-            name=name,
-            **kwargs)
-
-
 class FragmentFW(Firework):
     def __init__(self,
                  molecule=None,
@@ -1087,7 +965,7 @@ class FragmentFW(Firework):
 
         qchem_input_params = qchem_input_params or {}
         additional_charges = additional_charges or []
-        t = []
+        t = list()
         t.append(
             FragmentMolecule(
                 molecule=molecule,
@@ -1152,7 +1030,7 @@ class CubeAndCritic2FW(Firework):
         qchem_input_params["plot_cubes"] = True
         input_file="mol.qin"
         output_file="mol.qout"
-        t = []
+        t = list()
         t.append(
             WriteInputFromIOSet(
                 molecule=molecule,
