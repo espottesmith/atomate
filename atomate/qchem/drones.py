@@ -390,6 +390,13 @@ class QChemDrone(AbstractDrone):
                                         opt_trajectory["discontinuity"]["scf_energy"].append([ii-1,ii])
                     d["opt_trajectory"] = opt_trajectory
 
+                elif d["special_run_type"] == "pes_scan":
+                    if d["state"] == "successful":
+                        d["output"]["scan_energies"] = d["calcs_reversed"][0]["scan_energies"]
+                        d["input"]["scan_variables"] = d["calcs_reversed"][0]["scan_variables"]
+                        d["output"]["scan_geometries"] = d["calcs_reversed"][0]["optimized_geometries"]
+                        d["output"]["scan_molecules"] = d["calcs_reversed"][0]["molecules_from_optimized_geometries"]
+
             d["last_updated"] = datetime.datetime.utcnow()
             return d
 
