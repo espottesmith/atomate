@@ -6,7 +6,13 @@ import os
 import unittest
 import zlib
 
+import boto3
 import gridfs
+from maggma.stores import MemoryStore
+from monty.json import MontyDecoder
+from moto import mock_s3
+from pymatgen.electronic_structure.bandstructure import BandStructure
+from pymatgen.electronic_structure.dos import CompleteDos
 from pymongo import DESCENDING
 
 from fireworks import FWorker
@@ -19,8 +25,8 @@ from atomate.vasp.firetasks.parse_outputs import VaspDrone
 from atomate.vasp.database import VaspCalcDb
 
 
-from pymatgen.io.vasp import Incar
-from pymatgen.io.vasp.sets import MPRelaxSet, MPStaticSet
+from pymatgen.io.vasp import Incar, Chgcar
+from pymatgen.io.vasp.sets import MPRelaxSet, MPStaticSet, MPScanRelaxSet
 from pymatgen.util.testing import PymatgenTest
 from pymatgen.core import Structure
 
@@ -41,6 +47,7 @@ _fworker = FWorker(env={"db_file": os.path.join(db_dir, "db.json")})
 DEBUG_MODE = False  # If true, retains the database and output dirs at the end of the test
 VASP_CMD = None  # If None, runs a "fake" VASP. Otherwise, runs VASP with this command...
 
+decoder = MontyDecoder()
 
 class TestVaspWorkflows(AtomateTest):
 
@@ -274,14 +281,13 @@ class TestVaspWorkflows(AtomateTest):
     def test_chgcar_db_read_write(self):
         # generate a doc from the test folder
         drone = VaspDrone(parse_chgcar=True, parse_aeccar=True)
-        print(ref_dirs_si['static'])
         doc = drone.assimilate(ref_dirs_si['static']+'/outputs')
         # insert the doc make sure that the
-        cc = doc['calcs_reversed'][0]['chgcar']
+        cc = decoder.process_decoded(doc['calcs_reversed'][0]['chgcar'])
         self.assertAlmostEqual(cc.data['total'].sum()/cc.ngridpts, 8.0, 4)
-        cc = doc['calcs_reversed'][0]['aeccar0']
+        cc = decoder.process_decoded(doc['calcs_reversed'][0]['aeccar0'])
         self.assertAlmostEqual(cc.data['total'].sum()/cc.ngridpts, 23.253588293583313, 4)
-        cc = doc['calcs_reversed'][0]['aeccar2']
+        cc = decoder.process_decoded(doc['calcs_reversed'][0]['aeccar2'])
         self.assertAlmostEqual(cc.data['total'].sum()/cc.ngridpts, 8.01314480789829, 4)
         mmdb = VaspCalcDb.from_db_file(os.path.join(db_dir, "db.json"))
         t_id = mmdb.insert_task(doc, use_gridfs=True)
@@ -302,6 +308,66 @@ class TestVaspWorkflows(AtomateTest):
         ret_aeccar = ret_aeccar0 + ret_aeccar2
         self.assertAlmostEqual(ret_chgcar.data['total'].sum()/ret_chgcar.ngridpts, 8.0, 4)
         self.assertAlmostEqual(ret_aeccar.data['total'].sum()/ret_aeccar.ngridpts, 31.2667331015, 4)
+
+    def test_insert_maggma_store(self):
+        # generate a doc from the test folder
+        doc = {"a" : 1, "b" : 2}
+
+        with mock_s3():
+            conn = boto3.client("s3")
+            conn.create_bucket(Bucket="test_bucket")
+            mmdb = VaspCalcDb.from_db_file(os.path.join(db_dir, "db_aws.json"))
+            mmdb_changed_prefix = VaspCalcDb.from_db_file(os.path.join(db_dir, "db_aws_prefix.json"))
+            fs_id, compress_type = mmdb.insert_maggma_store(doc, 'store1', oid='1')
+            fs_id, compress_type = mmdb_changed_prefix.insert_maggma_store(doc, 'store1', oid='1')
+            assert fs_id == '1'
+            assert compress_type == 'zlib'
+            doc['task_id'] = 'mp-1'
+            _, _ = mmdb.insert_maggma_store(doc, 'store2', oid='2')
+            assert set(mmdb._maggma_stores.keys()) == {'store1', 'store2'}
+            with mmdb._maggma_stores['store1'] as store:
+                self.assertTrue(store.compress == True)
+                self.assertTrue(store.query_one({'fs_id': '1'}) == {'fs_id': '1', 'maggma_store_type': 'S3Store', 'compression': 'zlib', 'data': {'a': 1, 'b': 2}})
+            with mmdb._maggma_stores['store2'] as store:
+                self.assertTrue(store.compress == True)
+                self.assertTrue(store.query_one({'task_id': 'mp-1'}) == {'fs_id': '2', 'maggma_store_type': 'S3Store', 'compression': 'zlib', 'data': {'a': 1, 'b': 2, 'task_id': 'mp-1'}, 'task_id': 'mp-1'})
+
+    def test_chgcar_db_read_write_maggma(self):
+        # generate a doc from the test folder
+        drone = VaspDrone(parse_chgcar=True, parse_aeccar=True)
+        doc = drone.assimilate(ref_dirs_si['static']+'/outputs')
+        mmdb = VaspCalcDb.from_db_file(os.path.join(db_dir, "db_aws.json"))
+
+        with mock_s3():
+            conn = boto3.client("s3")
+            conn.create_bucket(Bucket="test_bucket")
+            t_id = mmdb.insert_task(task_doc=doc)
+
+            # basic check that data was written to the stores
+            with mmdb._maggma_stores['chgcar_fs'] as store:
+                res = store.query_one()
+                self.assertTrue(res['data']['@class'] == "Chgcar")
+            with mmdb._maggma_stores['aeccar0_fs'] as store:
+                res = store.query_one()
+                self.assertTrue(res['data']['@class'] == "Chgcar")
+            with mmdb._maggma_stores['aeccar2_fs'] as store:
+                res = store.query_one()
+                self.assertTrue(res['data']['@class'] == "Chgcar")
+            with mmdb._maggma_stores['bandstructure_fs'] as store:
+                res = store.query_one()
+                self.assertTrue(res['data']['@class'] == "BandStructure")
+
+            # print(mmdb.collection.find_one({'task_id' : t_id})["calcs_reversed"][0].keys())
+            # complex check that the data is the same
+            res = mmdb.get_band_structure(task_id=t_id)
+            self.assertTrue(isinstance(res, BandStructure))
+            res = mmdb.get_dos(task_id=t_id)
+            self.assertTrue(isinstance(res, CompleteDos))
+            res = mmdb.get_chgcar(task_id=t_id)
+            self.assertTrue(isinstance(res, Chgcar))
+            res = mmdb.get_aeccar(task_id=t_id)
+            self.assertTrue(isinstance(res['aeccar0'], Chgcar))
+            self.assertTrue(isinstance(res['aeccar2'], Chgcar))
 
     def test_chgcar_db_read(self):
         # add the workflow
@@ -348,7 +414,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
         if not VASP_CMD:
             wf = use_fake_vasp(wf,
                                {"PBEsol structure optimization": os.path.join(reference_dir, "PBESol_pre_opt_for_SCAN_{}".format(formula)),
-                                "SCAN structure optimization": os.path.join(reference_dir, "SCAN_structure_optimization_{}".format(formula))
+                                "R2SCAN structure optimization": os.path.join(reference_dir, "SCAN_structure_optimization_{}".format(formula))
                                 },
                                check_kpoints=False,
                                check_potcar=False,
@@ -369,7 +435,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
     def _get_launch_dir(self):
         # retrieve the launcher directory
         pbesol = list(self.get_task_collection().find({"task_label": "PBEsol structure optimization"}))[-1]
-        r2scan = list(self.get_task_collection().find({"task_label": "SCAN structure optimization"}))[-1]
+        r2scan = list(self.get_task_collection().find({"task_label": "R2SCAN structure optimization"}))[-1]
         pbesol_dir = pbesol["dir_name"].split(":")[1]
         r2scan_dir = r2scan["dir_name"].split(":")[1]
         return pbesol_dir, r2scan_dir
@@ -378,7 +444,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
         # A structure with bandgap = 0 (default) should have KSPACING equal to 0.22
         structure = Structure.from_file(os.path.join(reference_dir, "PBESol_pre_opt_for_SCAN_Al/inputs", "POSCAR"))
 
-        my_wf = get_wf(structure, "SCAN_optimization.yaml")
+        my_wf = get_wf(structure, "metagga_optimization.yaml")
         fw_ids = self._run_scan_relax(my_wf, "Al")
 
         # Check PBESol INCAR
@@ -425,7 +491,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
 
         structure = Structure.from_file(os.path.join(reference_dir, "PBESol_pre_opt_for_SCAN_LiH/inputs", "POSCAR"))
 
-        my_wf = get_wf(structure, "SCAN_optimization.yaml")
+        my_wf = get_wf(structure, "metagga_optimization.yaml")
         fw_ids = self._run_scan_relax(my_wf, "LiH")
 
         # Check PBESol INCAR
@@ -474,7 +540,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
 
         structure = Structure.from_file(os.path.join(reference_dir, "PBESol_pre_opt_for_SCAN_LiF/inputs", "POSCAR"))
 
-        my_wf = get_wf(structure, "SCAN_optimization.yaml")
+        my_wf = get_wf(structure, "metagga_optimization.yaml")
         fw_ids = self._run_scan_relax(my_wf, "LiF")
 
         # Check PBESol INCAR
@@ -523,7 +589,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
 
         structure = Structure.from_file(os.path.join(reference_dir, "PBESol_pre_opt_for_SCAN_LiF_vdw/inputs", "POSCAR"))
 
-        my_wf = get_wf(structure, "SCAN_optimization.yaml",
+        my_wf = get_wf(structure, "metagga_optimization.yaml",
                        common_params={"vasp_input_set_params": {"vdw": "rVV10"},
                                       "vdw_kernel_dir": os.path.join(reference_dir,
                                                                      "PBESol_pre_opt_for_SCAN_LiF_vdw/inputs")})
@@ -580,7 +646,7 @@ class TestScanOptimizeWorkflow(AtomateTest):
 
         structure = Structure.from_file(os.path.join(reference_dir, "PBESol_pre_opt_for_SCAN_LiH/inputs", "POSCAR"))
 
-        my_wf = get_wf(structure, "SCAN_optimization.yaml",
+        my_wf = get_wf(structure, "metagga_optimization.yaml",
                        common_params={"vasp_input_set_params": {"user_potcar_functional": "PBE_52",
                                                                 "user_incar_settings": {"NSW": 10,
                                                                                         "SYMPREC": 1e-6,
