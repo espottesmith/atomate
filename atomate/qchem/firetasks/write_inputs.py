@@ -117,13 +117,93 @@ class WriteCustomInput(FiretaskBase):
     to define custom input parameters.
 
     required_params:
-        qchem_input_custom (dict): Define custom input parameters to generate a qchem input file.
-        This should be a dictionary of dictionaries (i.e. {{"rem": {"method": "b3lyp", basis": "6-31*G++", ...}
-        Each QChem section should be a key with its own dictionary as the value. For more details on how
-        the input should be structured look at pymatgen.io.qchem.inputs
-        ***  ***
+        rem (dict):
+            A dictionary of all the input parameters for the rem section of QChem input file.
+            Ex. rem = {'method': 'rimp2', 'basis': '6-31*G++' ... }
 
     optional_params:
+        opt (dict of lists):
+            A dictionary of opt sections, where each opt section is a key and the corresponding
+            values are a list of strings. Strings must be formatted as instructed by the QChem manual.
+            The different opt sections are: CONSTRAINT, FIXED, DUMMY, and CONNECT
+            Ex. opt = {"CONSTRAINT": ["tors 2 3 4 5 25.0", "tors 2 5 7 9 80.0"], "FIXED": ["2 XY"]}
+        pcm (dict):
+            A dictionary of the PCM section, defining behavior for use of the polarizable continuum model.
+            Ex: pcm = {"theory": "cpcm", "hpoints": 194}
+        solvent (dict):
+            A dictionary defining the solvent parameters used with PCM.
+            Ex: solvent = {"dielectric": 78.39, "temperature": 298.15}
+        smx (dict):
+            A dictionary defining solvent parameters used with the SMD method, a solvent method that adds
+            short-range terms to PCM.
+            Ex: smx = {"solvent": "water"}
+        scan (dict of lists):
+            A dictionary of scan variables. Because two constraints of the same type are allowed (for instance, two
+            torsions or two bond stretches), each TYPE of variable (stre, bend, tors) should be its own key in the
+            dict, rather than each variable. Note that the total number of variable (sum of lengths of all lists)
+            CANNOT be
+            more than two.
+            Ex. scan = {"stre": ["3 6 1.5 1.9 0.1"], "tors": ["1 2 3 4 -180 180 15"]}
+        van_der_waals (dict):
+            A dictionary of custom van der Waals radii to be used when constructing cavities for the PCM
+            model or when computing, e.g. Mulliken charges. They keys are strs whose meaning depends on
+            the value of vdw_mode, and the values are the custom radii in angstroms.
+        vdw_mode (str): Method of specifying custom van der Waals radii - 'atomic' or 'sequential'.
+            In 'atomic' mode (default), dict keys represent the atomic number associated with each
+            radius (e.g., 12 = carbon). In 'sequential' mode, dict keys represent the sequential
+            position of a single specific atom in the input structure.
+        plots (dict):
+                A dictionary of all the input parameters for the plots section of the QChem input file.
+        nbo (dict):
+                A dictionary of all the input parameters for the nbo section of the QChem input file.
+        geom_opt (dict):
+                A dictionary of input parameters for the geom_opt section of the QChem input file.
+                This section is required when using the new libopt3 geometry optimizer.
+        cdft (list of lists of dicts):
+                A list of lists of dictionaries, where each dictionary represents a charge constraint in the
+                cdft section of the QChem input file.
+
+                Each entry in the main list represents one state (allowing for multiconfiguration calculations
+                using constrainted density functional theory - configuration interaction (CDFT-CI).
+                Each state is relresented by a list, which itself contains some number of constraints (dictionaries).
+
+                Ex:
+
+                1. For a single-state calculation with two constraints:
+                 cdft=[[
+                    {"value": 1.0, "coefficients": [1.0], "first_atoms": [1], "last_atoms": [2], "types": [None]},
+                    {"value": 2.0, "coefficients": [1.0, -1.0], "first_atoms": [1, 17], "last_atoms": [3, 19], "types": ["s"]}
+                ]]
+
+                Note that a type of None will default to a charge constraint (which can also be accessed by
+                requesting a type of "c" or "charge".
+
+                2. For a multireference calculation:
+                cdft=[
+                    [
+                        {"value": 1.0, "coefficients": [1.0], "first_atoms": [1], "last_atoms": [27], "types": ["c"]},
+                        {"value": 0.0, "coefficients": [1.0], "first_atoms": [1], "last_atoms": [27], "types": ["s"]},
+                    ],
+                    [
+                        {"value": 0.0, "coefficients": [1.0], "first_atoms": [1], "last_atoms": [27], "types": ["c"]},
+                        {"value": -1.0, "coefficients": [1.0], "first_atoms": [1], "last_atoms": [27], "types": ["s"]},
+                    ]
+                ]
+        almo (list of lists of int 2-tuples):
+            A list of lists of int 2-tuples used for calculations of diabatization and state coupling calculations
+                relying on the absolutely localized molecular orbitals (ALMO) methodology. Each entry in the main
+                list represents a single state (two states are included in an ALMO calculation). Within a single state,
+                each 2-tuple represents the charge and spin multiplicity of a single fragment.
+            ex: almo=[
+                        [
+                            (1, 2),
+                            (0, 1)
+                        ],
+                        [
+                            (0, 1),
+                            (1, 2)
+                        ]
+                    ]
         input_file (str): Name of the QChem input file. Defaults to mol.qin
         write_to_dir (str): Path of the directory where the QChem input file will be written,
         the default is to write to the current working directory
@@ -136,7 +216,15 @@ class WriteCustomInput(FiretaskBase):
         "opt",
         "pcm",
         "solvent",
+        "smx",
+        "scan",
         "van_der_waals",
+        "vdw_mode",
+        "plots",
+        "nbo",
+        "geom_opt",
+        "cdft",
+        "almo",
         "input_file",
         "write_to_dir",
     ]
@@ -151,17 +239,19 @@ class WriteCustomInput(FiretaskBase):
             # if a molecule is also passed as an optional parameter
             if self.get("molecule"):
                 mol = self.get("molecule")
+
                 # check if mol and prev_calc_mol are isomorphic
-                mol_graph = MoleculeGraph.with_local_env_strategy(mol, OpenBabelNN())
-                prev_mol_graph = MoleculeGraph.with_local_env_strategy(
-                    prev_calc_mol, OpenBabelNN()
-                )
-                if mol_graph.isomorphic_to(prev_mol_graph):
-                    mol = prev_calc_mol
-                else:
-                    print(
-                        "WARNING: Molecule from spec is not isomorphic to passed molecule!"
+                if isinstance(mol, Molecule) and isinstance(prev_calc_mol, Molecule):
+                    mol_graph = MoleculeGraph.with_local_env_strategy(mol, OpenBabelNN())
+                    prev_mol_graph = MoleculeGraph.with_local_env_strategy(
+                        prev_calc_mol, OpenBabelNN()
                     )
+                    if mol_graph.isomorphic_to(prev_mol_graph):
+                        mol = prev_calc_mol
+                    else:
+                        print(
+                            "WARNING: Molecule from spec is not isomorphic to passed molecule!"
+                        )
             else:
                 mol = prev_calc_mol
         elif self.get("molecule"):
@@ -175,8 +265,15 @@ class WriteCustomInput(FiretaskBase):
         opt = self.get("opt", None)
         pcm = self.get("pcm", None)
         solvent = self.get("solvent", None)
-        vdw_mode = self.get("vdw_mode", "atomic")
+        smx = self.get("smx", None)
+        scan = self.get("scan", None)
         van_der_waals = self.get("van_der_waals", None)
+        vdw_mode = self.get("vdw_mode", "atomic")
+        plots = self.get("plots", None)
+        nbo = self.get("nbo", None)
+        geom_opt = self.get("geom_opt", None)
+        cdft = self.get("cdft", None)
+        almo = self.get("almo", None)
 
         qcin = QCInput(
             molecule=mol,
@@ -184,8 +281,15 @@ class WriteCustomInput(FiretaskBase):
             opt=opt,
             pcm=pcm,
             solvent=solvent,
+            smx=smx,
+            scan=scan,
             van_der_waals=van_der_waals,
             vdw_mode=vdw_mode,
+            plots=plots,
+            nbo=nbo,
+            geom_opt=geom_opt,
+            cdft=cdft,
+            almo=almo
         )
         qcin.write_file(input_file)
 
