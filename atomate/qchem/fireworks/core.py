@@ -42,7 +42,7 @@ class SinglePointFW(Firework):
         """
 
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
@@ -233,7 +233,7 @@ class ForceFW(Firework):
         """
         Converge the electron density and calculate the atomic forces, aka the gradient.
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Defaults to openmp.
@@ -310,7 +310,7 @@ class OptimizeFW(Firework):
         Optimize the given structure.
 
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Defaults to openmp.
@@ -387,7 +387,7 @@ class TransitionStateFW(Firework):
         Optimize the given molecule to a saddle point of the potential energy surface (transition
         state).
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Defaults to openmp.
@@ -464,7 +464,7 @@ class FrequencyFW(Firework):
         Optimize the given structure.
 
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Defaults to openmp.
@@ -542,7 +542,7 @@ class PESScanFW(Firework):
         Perform a potential energy surface scan by varying bond lengths, angles,
         and/or dihedral angles in a molecule.
         Args:
-           molecule (Molecule): Input molecule.
+           molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
@@ -636,7 +636,7 @@ class FrequencyFlatteningOptimizeFW(Firework):
         the resulting structure is a true minima and not a saddle point.
 
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
@@ -759,7 +759,7 @@ class FrequencyFlatteningTransitionStateFW(Firework):
         Iteratively optimize the transition state structure and flatten imaginary frequencies to
         ensure that the resulting structure is a true transition state.
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.
@@ -960,7 +960,7 @@ class CubeAndCritic2FW(Firework):
         and then analyze the electron density critical points with the Critic2 package.
 
         Args:
-            molecule (Molecule): Input molecule.
+            molecule (Molecule or list of Molecules): Input molecule(s).
             name (str): Name for the Firework.
             qchem_cmd (str): Command to run QChem. Supports env_chk.
             multimode (str): Parallelization scheme, either openmp or mpi. Supports env_chk.

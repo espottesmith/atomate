@@ -10,7 +10,7 @@ from pymatgen.io.qchem.inputs import QCInput
 
 from atomate.utils.utils import load_class
 
-__author__ = "Brandon Wood"
+__author__ = "Brandon Wood, Evan Spotte-Smith"
 __copyright__ = "Copyright 2018, The Materials Project"
 __version__ = "0.1"
 __maintainer__ = "Brandon Wood"
