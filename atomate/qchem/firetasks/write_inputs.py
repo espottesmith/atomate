@@ -3,6 +3,7 @@
 import os
 
 from fireworks import FiretaskBase, explicit_serialize
+from pymatgen.core.structure import Molecule
 from pymatgen.analysis.graphs import MoleculeGraph
 from pymatgen.analysis.local_env import OpenBabelNN
 from pymatgen.io.qchem.inputs import QCInput
@@ -31,7 +32,8 @@ class WriteInputFromIOSet(FiretaskBase):
         fw_spec qc_input_set must be a string name for the QChem input set. ***
 
     optional_params:
-        molecule (Molecule): Molecule that will be subjected to an electronic structure calculation
+        molecule (Molecule, or list of Molecules): Molecule(s) that will be subjected to an electronic
+            structure calculation
         qchem_input_params (dict): When using a string name for QChem input set, use this as a dict
             to specify kwargs for instantiating the input set parameters. This setting is
             ignored if you provide the full object representation of a QChemDictSet. Basic uses
@@ -67,27 +69,30 @@ class WriteInputFromIOSet(FiretaskBase):
         # if a molecule is being passed through fw_spec
         elif fw_spec.get("prev_calc_molecule"):
             prev_calc_mol = fw_spec.get("prev_calc_molecule")
+
             # if a molecule is also passed as an optional parameter
             if self.get("molecule"):
                 mol = self.get("molecule")
+
                 # check if mol and prev_calc_mol are isomorphic
-                mol_graph = MoleculeGraph.with_local_env_strategy(mol, OpenBabelNN())
-                prev_mol_graph = MoleculeGraph.with_local_env_strategy(
-                    prev_calc_mol, OpenBabelNN()
-                )
-                # If they are isomorphic, aka a previous FW has not changed bonding,
-                # then we will use prev_calc_mol. If bonding has changed, we will use mol.
-                if mol_graph.isomorphic_to(prev_mol_graph):
-                    mol = prev_calc_mol
-                elif self["qchem_input_set"] != "OptSet":
-                    print(
-                        "WARNING: Molecule from spec is not isomorphic to passed molecule!"
+                if isinstance(mol, Molecule) and isinstance(prev_calc_mol, Molecule):
+                    mol_graph = MoleculeGraph.with_local_env_strategy(mol, OpenBabelNN())
+                    prev_mol_graph = MoleculeGraph.with_local_env_strategy(
+                        prev_calc_mol, OpenBabelNN()
                     )
-                    mol = prev_calc_mol
-                else:
-                    print(
-                        "Not using prev_calc_mol as it is not isomorphic to passed molecule!"
-                    )
+                    # If they are isomorphic, aka a previous FW has not changed bonding,
+                    # then we will use prev_calc_mol. If bonding has changed, we will use mol.
+                    if mol_graph.isomorphic_to(prev_mol_graph):
+                        mol = prev_calc_mol
+                    elif self["qchem_input_set"] != "OptSet":
+                        print(
+                            "WARNING: Molecule from spec is not isomorphic to passed molecule!"
+                        )
+                        mol = prev_calc_mol
+                    else:
+                        print(
+                            "Not using prev_calc_mol as it is not isomorphic to passed molecule!"
+                        )
             else:
                 mol = prev_calc_mol
 
