@@ -232,14 +232,14 @@ class QChemDrone(AbstractDrone):
                 d["output"]["nbo"] = d_calc_final["nbo_data"]
 
             # Data from constrained DFT (CDFT) output
-            if "cdft" in d_calc_final:
+            if d_calc_final.get("cdft") is not None:
                 d["output"]["cdft_constraints_multipliers"] = d_calc_final["cdft_constraints_multipliers"]
                 d["output"]["cdft_becke_excess_electrons"] = d_calc_final["cdft_becke_excess_electrons"]
                 d["output"]["cdft_becke_population"] = d_calc_final["cdft_becke_population"]
                 d["output"]["cdft_becke_net_spin"] = d_calc_final["cdft_becke_net_spin"]
 
             # Data from CDFT-based direct coupling output
-            if "cdft_direct_coupling" in d_calc_final:
+            if d_calc_final.get("cdft_direct_coupling") is not None:
                 d["output"]["direct_coupling_Hif_Hartree"] = d_calc_final["direct_coupling_Hif_Hartree"]
                 d["output"]["direct_coupling_Sif_Hartree"] = d_calc_final["direct_coupling_Sif_Hartree"]
                 d["output"]["direct_coupling_Hii_Hartree"] = d_calc_final["direct_coupling_Hii_Hartree"]
@@ -249,7 +249,7 @@ class QChemDrone(AbstractDrone):
                 d["output"]["direct_coupling_eV"] = d_calc_final["direct_coupling_eV"]
 
             # Data from coupling calculation based on absolutely localized molecular orbitals (ALMO)
-            if "almo_msdft2" in d_calc_final:
+            if d_calc_final.get("almo_msdft2") is not None:
                 d["output"]["almo_diabat_energies_Hartree"] = d_calc_final["almo_diabat_energies_Hartree"]
                 d["output"]["almo_adiabat_energies_Hartree"] = d_calc_final["almo_adiabat_energies_Hartree"]
                 d["output"]["almo_hamiltonian"] = d_calc_final["almo_hamiltonian"]
@@ -260,17 +260,17 @@ class QChemDrone(AbstractDrone):
                 d["output"]["almo_coupling_eV"] = d_calc_final["almo_coupling_eV"]
 
             # Data from Projection Operator Diabatization (POD) calculation
-            if "pod" in d_calc_final:
+            if d_calc_final.get("pod") is not None:
                 d["output"]["pod_coupling_eV"] = d_calc_final["pod_coupling_eV"]
 
             # Data from Fragment Orbital DFT (FODFT) method
-            if "fodft" in d_calc_final:
+            if d_calc_final.get("fodft") is not None:
                 d["output"]["fodft_had_eV"] = d_calc_final["fodft_had_eV"]
                 d["output"]["fodft_hda_eV"] = d_calc_final["fodft_hda_eV"]
                 d["output"]["fodft_coupling_eV"] = d_calc_final["fodft_coupling_eV"]
 
             # Data from coupled-cluster calculations
-            if "coupled_cluster" in d_calc_final:
+            if d_calc_final.get("coupled_cluster") is not None:
                 d["output"]["hf_scf_energy"] = d_calc_final["hf_scf_energy"]
                 d["output"]["mp2_energy"] = d_calc_final["mp2_energy"]
                 d["output"]["ccsd_correlation_energy"] = d_calc_final["ccsd_correlation_energy"]
@@ -370,7 +370,10 @@ class QChemDrone(AbstractDrone):
                 if d_calc_final["final_energy"] is not None:
                     d["output"]["final_energy"] = d_calc_final["final_energy"]
                 else:
-                    d["output"]["final_energy"] = d_calc_final["SCF"][-1][-1][0]
+                    try:
+                        d["output"]["final_energy"] = d_calc_final["SCF"][-1][-1][0]
+                    except IndexError:
+                        d["output"]["final_energy"] = None
 
             if d_calc_final["completion"]:
                 total_cputime = 0.0
