@@ -215,11 +215,14 @@ class QChemDrone(AbstractDrone):
                 "initial_molecule": d_calc_init["initial_molecule"],
                 "job_type": d_calc_init["input"]["rem"]["job_type"],
             }
+
             d["output"] = {
                 "initial_molecule": d_calc_final["initial_molecule"],
                 "job_type": d_calc_final["input"]["rem"]["job_type"],
-                "mulliken": d_calc_final["Mulliken"][-1],
             }
+
+            if "Mulliken" in d_calc_final and len(d_calc_final["Mulliken"]) > 0:
+                d["output"]["mulliken"] = d_calc_final["Mulliken"][-1]
             if "RESP" in d_calc_final:
                 d["output"]["resp"] = d_calc_final["RESP"][-1]
             elif "ESP" in d_calc_final:
