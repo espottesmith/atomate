@@ -156,16 +156,27 @@ class QChemDrone(AbstractDrone):
                 orig_input = QCInput.from_file(
                     os.path.join(dir_name, qcinput_files.pop("orig"))
                 )
-                d["orig"] = {}
-                d["orig"]["molecule"] = orig_input.molecule.as_dict()
-                d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
+                d["orig"] = dict()
+                orig_mol = orig_input.molecule
+                if isinstance(orig_mol, Molecule):
+                    d["orig"]["molecule"] = orig_mol.as_dict()
+                    d["orig"]["molecule"]["charge"] = int(d["orig"]["molecule"]["charge"])
+                else:
+                    d["orig"]["molecule"] = [m.as_dict() for m in orig_mol]
+                    d["orig"]["molecule"]["charge"] = sum([int(x["charge"]) for x in d["orig"]["molecule"]])
                 d["orig"]["rem"] = orig_input.rem
                 d["orig"]["opt"] = orig_input.opt
                 d["orig"]["pcm"] = orig_input.pcm
                 d["orig"]["solvent"] = orig_input.solvent
                 d["orig"]["smx"] = orig_input.smx
-                d["orig"]["vdw_mode"] = orig_input.vdw_mode
+                d["orig"]["scan"] = orig_input.scan
                 d["orig"]["van_der_waals"] = orig_input.van_der_waals
+                d["orig"]["vdw_mode"] = orig_input.vdw_mode
+                d["orig"]["plots"] = orig_input.plots
+                d["orig"]["nbo"] = orig_input.nbo
+                d["orig"]["geom_opt"] = orig_input.geom_opt
+                d["orig"]["cdft"] = orig_input.cdft
+                d["orig"]["almo"] = orig_input.almo
 
             if multirun:
                 d["calcs_reversed"] = self.process_qchem_multirun(
@@ -216,6 +227,53 @@ class QChemDrone(AbstractDrone):
 
             if "nbo_data" in d_calc_final:
                 d["output"]["nbo"] = d_calc_final["nbo_data"]
+
+            # Data from constrained DFT (CDFT) output
+            if "cdft" in d_calc_final:
+                d["output"]["cdft_constraints_multipliers"] = d_calc_final["cdft_constraints_multipliers"]
+                d["output"]["cdft_becke_excess_electrons"] = d_calc_final["cdft_becke_excess_electrons"]
+                d["output"]["cdft_becke_population"] = d_calc_final["cdft_becke_population"]
+                d["output"]["cdft_becke_net_spin"] = d_calc_final["cdft_becke_net_spin"]
+
+            # Data from CDFT-based direct coupling output
+            if "cdft_direct_coupling" in d_calc_final:
+                d["output"]["direct_coupling_Hif_Hartree"] = d_calc_final["direct_coupling_Hif_Hartree"]
+                d["output"]["direct_coupling_Sif_Hartree"] = d_calc_final["direct_coupling_Sif_Hartree"]
+                d["output"]["direct_coupling_Hii_Hartree"] = d_calc_final["direct_coupling_Hii_Hartree"]
+                d["output"]["direct_coupling_Sii_Hartree"] = d_calc_final["direct_coupling_Sii_Hartree"]
+                d["output"]["direct_coupling_Hff_Hartree"] = d_calc_final["direct_coupling_Hff_Hartree"]
+                d["output"]["direct_coupling_Sff_Hartree"] = d_calc_final["direct_coupling_Sff_Hartree"]
+                d["output"]["direct_coupling_eV"] = d_calc_final["direct_coupling_eV"]
+
+            # Data from coupling calculation based on absolutely localized molecular orbitals (ALMO)
+            if "almo_msdft2" in d_calc_final:
+                d["output"]["almo_diabat_energies_Hartree"] = d_calc_final["almo_diabat_energies_Hartree"]
+                d["output"]["almo_adiabat_energies_Hartree"] = d_calc_final["almo_adiabat_energies_Hartree"]
+                d["output"]["almo_hamiltonian"] = d_calc_final["almo_hamiltonian"]
+                d["output"]["almo_overlap_matrix"] = d_calc_final["almo_overlap_matrix"]
+                d["output"]["almo_s2_matrix"] = d_calc_final["almo_s2_matrix"]
+                d["output"]["almo_diabat_basis_coeff"] = d_calc_final["almo_diabat_basis_coeff"]
+                d["output"]["almo_h_coupling_matrix"] = d_calc_final["almo_h_coupling_matrix"]
+                d["output"]["almo_coupling_eV"] = d_calc_final["almo_coupling_eV"]
+
+            # Data from Projection Operator Diabatization (POD) calculation
+            if "pod" in d_calc_final:
+                d["output"]["pod_coupling_eV"] = d_calc_final["pod_coupling_eV"]
+
+            # Data from Fragment Orbital DFT (FODFT) method
+            if "fodft" in d_calc_final:
+                d["output"]["fodft_had_eV"] = d_calc_final["fodft_had_eV"]
+                d["output"]["fodft_hda_eV"] = d_calc_final["fodft_hda_eV"]
+                d["output"]["fodft_coupling_eV"] = d_calc_final["fodft_coupling_eV"]
+
+            # Data from coupled-cluster calculations
+            if "coupled_cluster" in d_calc_final:
+                d["output"]["hf_scf_energy"] = d_calc_final["hf_scf_energy"]
+                d["output"]["mp2_energy"] = d_calc_final["mp2_energy"]
+                d["output"]["ccsd_correlation_energy"] = d_calc_final["ccsd_correlation_energy"]
+                d["output"]["ccsd_total_energy"] = d_calc_final["ccsd_total_energy"]
+                d["output"]["ccsd(t)_correlation_energy"] = d_calc_final["ccsd(t)_correlation_energy"]
+                d["output"]["ccsd(t)_total_energy"] = d_calc_final["ccsd(t)_total_energy"]
 
             if d["output"]["job_type"] in ["opt", "optimization", "ts"]:
                 if "molecule_from_optimized_geometry" in d_calc_final:
@@ -422,15 +480,21 @@ class QChemDrone(AbstractDrone):
         qchem_output_file = os.path.join(dir_name, output_file)
         d = QCOutput(qchem_output_file).data
         temp_input = QCInput.from_file(qchem_input_file)
-        d["input"] = {}
+        d["input"] = dict()
         d["input"]["molecule"] = temp_input.molecule
         d["input"]["rem"] = temp_input.rem
         d["input"]["opt"] = temp_input.opt
         d["input"]["pcm"] = temp_input.pcm
         d["input"]["solvent"] = temp_input.solvent
         d["input"]["smx"] = temp_input.smx
-        d["input"]["vdw_mode"] = temp_input.vdw_mode
+        d["input"]["scan"] = temp_input.scan
         d["input"]["van_der_waals"] = temp_input.van_der_waals
+        d["input"]["vdw_mode"] = temp_input.vdw_mode
+        d["input"]["plots"] = temp_input.plots
+        d["input"]["nbo"] = temp_input.nbo
+        d["input"]["geom_opt"] = temp_input.geom_opt
+        d["input"]["cdft"] = temp_input.cdft
+        d["input"]["almo"] = temp_input.almo
         d["task"] = {"type": taskname, "name": taskname}
         return d
 
@@ -463,8 +527,14 @@ class QChemDrone(AbstractDrone):
                     d["input"]["pcm"] = multi_in[ii].pcm
                     d["input"]["solvent"] = multi_in[ii].solvent
                     d["input"]["smx"] = multi_in[ii].smx
-                    d["input"]["vdw_mode"] = multi_in[ii].vdw_mode
+                    d["input"]["scan"] = multi_in[ii].scan
                     d["input"]["van_der_waals"] = multi_in[ii].van_der_waals
+                    d["input"]["vdw_mode"] = multi_in[ii].vdw_mode
+                    d["input"]["plots"] = multi_in[ii].plots
+                    d["input"]["nbo"] = multi_in[ii].nbo
+                    d["input"]["geom_opt"] = multi_in[ii].geom_opt
+                    d["input"]["cdft"] = multi_in[ii].cdft
+                    d["input"]["almo"] = multi_in[ii].almo
                     d["task"] = {"type": key, "name": "calc" + str(ii)}
                     to_return.append(d)
             return to_return
