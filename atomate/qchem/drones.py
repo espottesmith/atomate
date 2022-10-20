@@ -177,7 +177,7 @@ class QChemDrone(AbstractDrone):
                 d["orig"]["nbo"] = orig_input.nbo
                 d["orig"]["geom_opt"] = orig_input.geom_opt
                 d["orig"]["cdft"] = orig_input.cdft
-                d["orig"]["almo"] = orig_input.almo_coupling
+                d["orig"]["almo_coupling"] = orig_input.almo_coupling
 
             if multirun:
                 d["calcs_reversed"] = self.process_qchem_multirun(
@@ -501,7 +501,7 @@ class QChemDrone(AbstractDrone):
         d["input"]["nbo"] = temp_input.nbo
         d["input"]["geom_opt"] = temp_input.geom_opt
         d["input"]["cdft"] = temp_input.cdft
-        d["input"]["almo"] = temp_input.almo
+        d["input"]["almo_coupling"] = temp_input.almo_coupling
         d["task"] = {"type": taskname, "name": taskname}
         return d
 
