@@ -177,7 +177,7 @@ class QChemDrone(AbstractDrone):
                 d["orig"]["nbo"] = orig_input.nbo
                 d["orig"]["geom_opt"] = orig_input.geom_opt
                 d["orig"]["cdft"] = orig_input.cdft
-                d["orig"]["almo"] = orig_input.almo
+                d["orig"]["almo"] = orig_input.almo_coupling
 
             if multirun:
                 d["calcs_reversed"] = self.process_qchem_multirun(
