@@ -250,7 +250,7 @@ class QChemDrone(AbstractDrone):
                 d["output"]["direct_coupling_eV"] = d_calc_final["direct_coupling_eV"]
 
             # Data from coupling calculation based on absolutely localized molecular orbitals (ALMO)
-            if d_calc_final.get("almo_msdft2") is not None:
+            if d_calc_final.get("almo_msdft2") is not None or d_calc_final.get("almo_msdft") is not None:
                 d["output"]["almo_diabat_energies_Hartree"] = d_calc_final["almo_diabat_energies_Hartree"]
                 d["output"]["almo_adiabat_energies_Hartree"] = d_calc_final["almo_adiabat_energies_Hartree"]
                 d["output"]["almo_hamiltonian"] = d_calc_final["almo_hamiltonian"]
